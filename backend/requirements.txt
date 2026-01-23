@@ -27,3 +27,4 @@ langchain # Keeping for potential utility
 python-dotenv
 httpx
 pytest
+pytest-mock
