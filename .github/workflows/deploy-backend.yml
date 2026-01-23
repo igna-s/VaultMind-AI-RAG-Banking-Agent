@@ -34,6 +34,6 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: "banking-rag-auth-api" # CHANGE THIS to your App Name if statically defined, or use secrets
+          app-name: "banking-rag-auth-api-1769195673" # Dynamically set from provisioning script
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./backend_app.zip
