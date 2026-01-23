@@ -26,3 +26,4 @@ langchain # Keeping for potential utility
 # Utilities
 python-dotenv
 httpx
+pytest

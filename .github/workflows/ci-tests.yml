@@ -41,6 +41,6 @@ jobs:
         env:
           APP_MODE: TEST
           DB_PASSWORD: password # Mock needed as per config
-          PYTHONPATH: ${{ github.workspace }}/banking-rag-app
+          PYTHONPATH: ${{ github.workspace }}
         run: |
-          pytest banking-rag-app/backend/app/tests
+          pytest backend/app/tests
