@@ -1,0 +1,28 @@
+# Core API
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+
+# Database & ORM
+sqlmodel
+psycopg2-binary
+pgvector
+sqlalchemy
+asyncpg
+
+# Security
+passlib[bcrypt]
+python-jose[cryptography]
+bcrypt
+
+# AI & RAG
+voyageai
+tavily-python
+langchain-groq # Keeping for potential utility
+langchain # Keeping for potential utility
+
+# Utilities
+python-dotenv
+httpx

@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate"; /* If using animate plugin, otherwise remove */
+
+
+:root {
+  /* Core Brand Colors */
+  --color-primary: 79 70 229; /* Indigo 600 */
+  --color-secondary: 139 92 246; /* Violet 500 */
+  --color-accent: 56 189 248; /* Sky 400 */
+  
+  /* Backgrounds */
+  --bg-deep: 15 11 30; /* #0f0b1e */
+  --bg-glass: 255 255 255;
+}
+
+body {
+  background-color: rgb(var(--bg-deep));
+  color: white;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Glassmorphism Utilities */
+@layer components {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl;
+  }
+  
+  .glass-button {
+    @apply bg-indigo-600/80 hover:bg-indigo-600 backdrop-blur-md 
+           border border-indigo-400/30 text-white shadow-lg shadow-indigo-500/20
+           transition-all duration-300;
+  }
+
+  .input-glass {
+    @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3
+           placeholder:text-white/30 text-white focus:outline-none
+           focus:border-indigo-500/50 focus:bg-white/10 transition-all;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

@@ -1,0 +1,32 @@
+# System
+.DS_Store
+Thumbs.db
+
+# Environments
+.env
+.venv
+venv/
+env/
+__pycache__/
+
+# Dependencies (Root level protections)
+node_modules/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# Backend specific
+*.pyc
+instance/
+.pytest_cache/
+coverage.xml
+
+# Frontend specific
+dist/
+build/
+coverage/
+
+# Logs
+*.log
