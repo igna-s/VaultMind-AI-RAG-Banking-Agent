@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock
-from backend.app.config import settings
+from app.config import settings
 
 @pytest.fixture(autouse=True)
 def mock_llm(mocker):
