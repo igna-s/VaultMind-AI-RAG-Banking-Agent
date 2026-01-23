@@ -40,6 +40,7 @@ jobs:
       - name: Run Tests
         env:
           APP_MODE: TEST
+          DATABASE_URL: postgresql://user:password@localhost:5432/test_db
           DB_PASSWORD: password # Mock needed as per config
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
