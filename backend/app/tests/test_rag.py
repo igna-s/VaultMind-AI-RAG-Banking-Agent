@@ -14,7 +14,7 @@ def test_chat_endpoint_mocked(mock_llm):
     data = response.json()
     
     # Verify we got the safe mocked response
-    assert data["answer"] == "Respuesta simulada segura"
+    assert data["response"] == "Respuesta simulada segura"
     
     # Verify the mock was actually called (if the fixture yielded the mock)
     if mock_llm:

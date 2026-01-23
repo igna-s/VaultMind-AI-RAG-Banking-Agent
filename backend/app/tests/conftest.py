@@ -12,8 +12,12 @@ def mock_llm(mocker):
         # We Mock the specific function that handles LLM interaction.
         # Adjust the target path 'backend.app.main.get_llm_response' as needed if the code moves.
         mock = mocker.patch(
-            "backend.app.main.get_llm_response",
-            side_effect=AsyncMock(return_value="Respuesta simulada segura")
+            "app.main.generate_response",
+            side_effect=AsyncMock(return_value={
+                "response": "Respuesta simulada segura", 
+                "sources": ["Mock"], 
+                "used_web_search": False
+            })
         )
         yield mock
     else:
