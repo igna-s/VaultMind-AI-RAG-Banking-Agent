@@ -2,8 +2,8 @@
 
 # Configuration
 RESOURCE_GROUP="REDACTED_RG"
-BACKEND_APP_NAME="banking-rag-auth-api-$(date +%s)"
-FRONTEND_APP_NAME="banking-rag-web-$(date +%s)"
+BACKEND_APP_NAME="banking-rag-auth-api"
+FRONTEND_APP_NAME="banking-rag-web"
 PLAN_NAME="banking-rag-plan"
 
 # List of regions to try for App Service
