@@ -10,7 +10,7 @@ This guide explains how to set up the **Banking RAG Agent** project from scratch
 
 ## 1. Database Setup (Azure PostgreSQL)
 
-_For a step-by-step guide with screenshots and Free Tier details, see [.docs/azure_setup_guide.md](.docs/azure_setup_guide.md)._
+_For a step-by-step guide with screenshots and Free Tier details, see [docs/azure_setup_guide.md](docs/azure_setup_guide.md)._
 
 Due to Azure Student policies, we recommend creating the database manually or following our detailed guide.
 
@@ -55,6 +55,8 @@ Located in `backend/`. Contains the LangGraph agent and API logic.
 
     # APIs
     VOYAGE_API_KEY=vy-...       # Voyage AI
+    GROQ_API_KEY=gsk_...        # Groq (Llama 3)
+    TAVILY_API_KEY=tvly-...     # Tavily Search
     SECRET_KEY=...              # JWT Secret
     ```
 
@@ -124,6 +126,8 @@ Add the following secrets:
 - `AZURE_STATIC_WEB_APPS_API_TOKEN` (From script output)
 - `DATABASE_URL` (From Database Setup)
 - `VOYAGE_API_KEY`
+- `GROQ_API_KEY`
+- `TAVILY_API_KEY`
 
 ### 3. Deploy
 

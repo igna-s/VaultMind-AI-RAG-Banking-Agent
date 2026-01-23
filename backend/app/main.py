@@ -44,15 +44,7 @@ def chat_endpoint(query: str, session: Session = Depends(get_session), user: Use
     # 1. RAG Retrieve
     context_chunks = rag_pipeline(session, query, user.id)
     
-    context_text = "\n\n".join([c.content for c in context_chunks])
-    
-    # 2. LLM Generation (Placeholder using print/mock)
-    # real: llm.invoke(prompt)
-    response = f"Simulated Response based on context:\n{context_text[:200]}..."
-    
-    # 3. Save History
-    # Find active conversation or create new
-    # For MVP, just create a message in a 'General' conversation
+    # 2. Get/Create Conversation (moved up for history access)
     conv = session.exec(select(Conversation).where(Conversation.user_id == user.id).where(Conversation.title == "General")).first()
     if not conv:
         conv = Conversation(user_id=user.id, title="General")
@@ -60,13 +52,29 @@ def chat_endpoint(query: str, session: Session = Depends(get_session), user: Use
         session.commit()
         session.refresh(conv)
         
+    # Get History (Last 5 messages)
+    history = session.exec(
+        select(Message)
+        .where(Message.conversation_id == conv.id)
+        .order_by(Message.created_at.desc())
+        .limit(5)
+    ).all()
+    history = list(reversed(history)) # Oldest first
+
+    # 3. LLM Generation (Groq + Tavily)
+    from app.services.llm import generate_response
+    
+    llm_result = generate_response(query, context_chunks, history)
+    response_text = llm_result["response"]
+    
+    # 4. Save History    
     session.add(Message(conversation_id=conv.id, role="user", content=query))
-    session.add(Message(conversation_id=conv.id, role="assistant", content=response))
+    session.add(Message(conversation_id=conv.id, role="assistant", content=response_text))
     session.commit()
     
     return {
-        "response": response,
-        "sources": [chunk.document.filename for chunk in context_chunks] # N+1 query warning but OK for MVP
+        "response": response_text,
+        "sources": llm_result["sources"]
     }
 
 @app.post("/upload")

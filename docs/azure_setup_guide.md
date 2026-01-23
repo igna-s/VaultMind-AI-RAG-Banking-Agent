@@ -37,6 +37,8 @@ Configure these in your App Service **Configuration** -> **Application settings*
 | :---------------------------- | :------------------------------------------------------------ |
 | `DATABASE_URL`                | `postgresql://user:pass@host:5432/postgres?sslmode=require`   |
 | `VOYAGE_API_KEY`              | Your Voyage AI API Key                                        |
+| `GROQ_API_KEY`                | Your Groq API Key                                             |
+| `TAVILY_API_KEY`              | Your Tavily API Key                                           |
 | `SECRET_KEY`                  | Generated random string for JWT (e.g. `openssl rand -hex 32`) |
 | `ALGORITHM`                   | `HS256`                                                       |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30`                                                          |

@@ -2,9 +2,12 @@
 
 # Configuration
 RESOURCE_GROUP="REDACTED_RG"
-LOCATION="eastus2" # Free tier friendly region
 BACKEND_APP_NAME="banking-rag-auth-api-$(date +%s)"
 FRONTEND_APP_NAME="banking-rag-web-$(date +%s)"
+PLAN_NAME="banking-rag-plan"
+
+# List of regions to try for App Service
+REGIONS=("eastus" "centralus" "northcentralus" "southcentralus" "westus" "westus2" "westeurope" "northeurope" "japaneast" "inframundo")
 
 echo "🚀 Starting Azure Hosting Setup (Free Tier)..."
 
@@ -14,16 +17,36 @@ if ! az account show &> /dev/null; then
     exit 1
 fi
 
-# 2. Resource Group
-echo "📦 Ensuring Resource Group '$RESOURCE_GROUP'..."
-az group create --name $RESOURCE_GROUP --location $LOCATION
+# 2. Resource Group (Already exists in EastUS usually)
+echo "📦 Using Resource Group '$RESOURCE_GROUP'..."
+# Check if exists, if not create in eastus (default)
+if ! az group show --name $RESOURCE_GROUP &> /dev/null; then
+    az group create --name $RESOURCE_GROUP --location eastus
+fi
 
-# 3. Backend: App Service (Python / Linux / Free F1)
-PLAN_NAME="banking-rag-plan"
-echo "🐍 Creating App Service Plan '$PLAN_NAME' (F1 Free)..."
-az appservice plan create --name $PLAN_NAME --resource-group $RESOURCE_GROUP --sku F1 --is-linux
+# 3. Backend: App Service (Try Regions)
+LOCATION=""
+PLAN_CREATED=false
 
-echo "🐍 Creating Web App '$BACKEND_APP_NAME'..."
+for REGION in "${REGIONS[@]}"; do
+    echo "� Attempting to create App Service Plan in '$REGION'..."
+    
+    if az appservice plan create --name $PLAN_NAME --resource-group $RESOURCE_GROUP --sku F1 --is-linux --location $REGION &> /dev/null; then
+        echo "✅ Success! Plan created in '$REGION'."
+        LOCATION=$REGION
+        PLAN_CREATED=true
+        break
+    else
+        echo "❌ Failed in '$REGION'. Disallowed or quota reached."
+    fi
+done
+
+if [ "$PLAN_CREATED" = false ]; then
+    echo "💀 All regions failed for App Service Plan. Cannot proceed."
+    exit 1
+fi
+
+echo "🐍 Creating Web App '$BACKEND_APP_NAME' in '$LOCATION'..."
 az webapp create --resource-group $RESOURCE_GROUP --plan $PLAN_NAME --name $BACKEND_APP_NAME --runtime "PYTHON:3.10"
 
 echo "⚙️ Configuring Backend Settings..."
@@ -32,9 +55,14 @@ az webapp config appsettings set --resource-group $RESOURCE_GROUP --name $BACKEN
     PYTHON_ENABLE_GUNICORN_MULTIWORKERS=true \
     WEBSITES_PORT=8000
 
-# 4. Frontend: Static Web App (React / Free)
+# 4. Frontend: Static Web App (Try Regions)
+# Static Web Apps are global but need a location for metadata. We use the same as backend or fallback.
 echo "⚛️ Creating Static Web App '$FRONTEND_APP_NAME'..."
-az staticwebapp create --name $FRONTEND_APP_NAME --resource-group $RESOURCE_GROUP --location $LOCATION --sku Free
+if ! az staticwebapp create --name $FRONTEND_APP_NAME --resource-group $RESOURCE_GROUP --location $LOCATION --sku Free; then
+     # Fallback for SWA if specific region fails (SWA supports fewer regions than App Service sometimes)
+     echo "⚠️ creating in primary location failed, trying 'westeurope'..."
+     az staticwebapp create --name $FRONTEND_APP_NAME --resource-group $RESOURCE_GROUP --location "westeurope" --sku Free
+fi
 
 # 5. Output Secrets
 echo ""
