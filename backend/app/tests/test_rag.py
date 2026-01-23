@@ -8,7 +8,7 @@ def test_chat_endpoint_mocked(mock_llm):
     Test that the chat endpoint uses the mock LLM when in TEST mode.
     The mock_llm fixture (autouse=True) handles the patching if settings.USE_MOCK_LLM is True.
     """
-    response = client.post("/api/v1/chat", json={"message": "Hola, esto es un test"})
+    response = client.post("/chat", params={"query": "Hola, esto es un test"})
     
     assert response.status_code == 200
     data = response.json()
