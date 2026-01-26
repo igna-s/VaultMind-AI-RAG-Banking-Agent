@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+    devcontainer:
+        image: mcr.microsoft.com/devcontainers/python:3.11
+        volumes:
+            - ..:/workspace:cached
+        working_dir: /workspace/TheDefinitiveProyect
+        command: sleep infinity
+        networks:
+            - banking-net
+
+    backend:
+        environment:
+            - DEV_CONTAINER=true

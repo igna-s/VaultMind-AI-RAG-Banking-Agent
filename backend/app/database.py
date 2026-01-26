@@ -3,19 +3,19 @@ from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
 
-# Load env from backend root
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# .env is in backend/, which is parent of app/
-dotenv_path = os.path.join(os.path.dirname(current_dir), '.env')
-load_dotenv(dotenv_path)
+from app.config import settings
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = settings.DATABASE_URL
 
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL env var is not set")
+    raise ValueError("DATABASE_URL is not set in settings")
 
 # Ensure asyncpg or psycopg2 driver use (we use psycopg2 via sqlalchemy default for sync)
-engine = create_engine(DATABASE_URL, echo=False)
+connect_args = {}
+if settings.APP_MODE != "DEV":
+    connect_args["sslmode"] = "require"
+
+engine = create_engine(DATABASE_URL, echo=False, connect_args=connect_args)
 
 def init_db():
     from sqlalchemy import text

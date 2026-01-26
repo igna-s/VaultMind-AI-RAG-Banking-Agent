@@ -1,5 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext({});
 
@@ -8,86 +7,100 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!supabase) {
-        setLoading(false);
-        return;
+    // Check if we have a stored user from a previous session
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
-
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    setLoading(false);
   }, []);
 
-  const signInWithGoogle = async (email, password) => {
+  const login = async (email, password) => {
     try {
-        setLoading(true);
-        // Using relative path to use Vite Proxy
-        const response = await fetch('/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        
-        if (!response.ok) {
-            throw new Error('Login failed');
-        }
+      setLoading(true);
+      // Backend expects application/x-www-form-urlencoded for OAuth2PasswordRequestForm
+      const params = new URLSearchParams();
+      params.append('username', email);
+      params.append('password', password);
 
-        const data = await response.json();
-        setUser({ email, token: data.access_token });
+      const response = await fetch('/auth/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params,
+        credentials: 'include' // Important for cookies
+      });
+
+      // Read response text first to avoid JSON parse errors on empty responses
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        let errorMessage = 'Login failed';
+        if (responseText) {
+          try {
+            const err = JSON.parse(responseText);
+            errorMessage = err.detail || errorMessage;
+          } catch {
+            errorMessage = responseText || errorMessage;
+          }
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Token is in HttpOnly cookie, store user info locally
+      const userData = { email };
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
-        console.error('Error logging in:', error);
+      console.error('Error logging in:', error);
+      // Don't alert on 500 if handled by UI, but for now specific alert
+      if (error.message.includes('500')) {
+        alert('Server Error (500). Please check backend connection.');
+      } else {
         alert('Login failed: ' + error.message);
+      }
+      throw error;
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
-  
+
   const registerUser = async (email, password) => {
-      try {
-        setLoading(true);
-        const response = await fetch('/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        
-        
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.detail || 'Registration failed');
-        }
-        
-        // Success - no auto login
-        setLoading(false);
-        return true;
-      } catch (error) {
-         console.error('Error registering:', error);
-         alert('Registration failed: ' + error.message);
-         setLoading(false);
-         throw error;
+    try {
+      setLoading(true);
+      const response = await fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Registration failed');
       }
+
+      return true;
+    } catch (error) {
+      console.error('Error registering:', error);
+      alert('Registration failed: ' + error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOut = () => {
     setUser(null);
+    localStorage.removeItem('user');
+    // Clear cookie by making a logout request (optional endpoint)
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, registerUser, signOut }}>
+    <AuthContext.Provider value={{ user, loading, login, registerUser, signOut }}>
       {children}
     </AuthContext.Provider>
   );
-
 };
 
 export const useAuth = () => useContext(AuthContext);

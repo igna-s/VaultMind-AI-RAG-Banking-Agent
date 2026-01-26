@@ -13,11 +13,15 @@ logger = logging.getLogger(__name__)
 if not GROQ_API_KEY:
     logger.warning("GROQ_API_KEY not set. LLM generation will fail.")
 
-llm = ChatGroq(
-    temperature=0,
-    model_name="llama3-70b-8192",
-    api_key=GROQ_API_KEY
-)
+# Use standard Groq if key exists, else mock or error gracefully in production
+if GROQ_API_KEY:
+    llm = ChatGroq(
+        temperature=0,
+        model_name="llama-3.3-70b-versatile",
+        api_key=GROQ_API_KEY
+    )
+else:
+    llm = None
 
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY) if TAVILY_API_KEY else None
 
@@ -49,9 +53,9 @@ def generate_response(query: str, context_chunks: list = None, history: list = N
     # 1. Prepare Context
     if context_chunks:
         context_text = "\n\n".join([c.content for c in context_chunks])
-        # Unpack SQLModel objects if needed, assuming they possess 'document' relation
         try:
-            sources = [c.document.filename for c in context_chunks]
+            # Assuming 'document' is loaded or we use a safe getattr
+            sources = [c.document.title if c.document else "Unknown Doc" for c in context_chunks]
         except:
             sources = ["Internal Documents"]
             
@@ -81,18 +85,24 @@ def generate_response(query: str, context_chunks: list = None, history: list = N
     # 3. Construct Messages
     messages = [SystemMessage(content=system_prompt)]
     
-    # Optional: Add history (simplified for MVP)
+    # Optional: Add history
     if history:
-        # Assuming history is list of Message sqlmodels
-        for msg in history[-5:]: # Last 5
+        for msg in history:
+            # Schema uses 'user' and 'ai'
             if msg.role == 'user':
                 messages.append(HumanMessage(content=msg.content))
-            else:
+            elif msg.role == 'ai' or msg.role == 'assistant':
                 messages.append(AIMessage(content=msg.content))
     
     messages.append(HumanMessage(content=query))
     
     # 4. Generate
+    if not llm:
+        return {
+            "response": "LLM Service Unavailable (Missing API Key)",
+            "sources": sources
+        }
+
     try:
         response = llm.invoke(messages)
         content = response.content
@@ -102,6 +112,5 @@ def generate_response(query: str, context_chunks: list = None, history: list = N
     
     return {
         "response": content,
-        "sources": sources,
-        "used_web_search": not bool(context_chunks)
+        "sources": sources
     }

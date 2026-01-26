@@ -7,16 +7,26 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
-        '/auth': {
-            target: 'http://localhost:8000',
-            changeOrigin: true,
-            secure: false,
-        },
-        '/api': {
-            target: 'http://localhost:8000',
-            changeOrigin: true,
-            secure: false,
-        }
+      '/auth': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/chat': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/upload': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false,
+      }
     }
   }
 })

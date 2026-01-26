@@ -8,9 +8,9 @@ services:
     environment:
       - APP_MODE=DEV
       - USE_MOCK_LLM=True
-      - POSTGRES_USER=user
+      - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=banking_db
+      - POSTGRES_DB=rag_db
       - POSTGRES_HOST=db
     volumes:
       - ./backend/app:/app/app
@@ -37,16 +37,17 @@ services:
       - backend
 
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg16
     container_name: banking_db
     environment:
-      - POSTGRES_USER=user
+      - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=banking_db
+      - POSTGRES_DB=rag_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./Database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - banking-net
 

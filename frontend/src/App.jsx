@@ -3,8 +3,8 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/auth/Login';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { Profile, Settings } from './pages/dashboard/Placeholders';
-
 import Overview from './pages/dashboard/Overview';
+import ChatPage from './pages/dashboard/ChatPage';
 
 function App() {
   return (
@@ -13,9 +13,10 @@ function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
-             <Route index element={<Overview />} />
-             <Route path="profile" element={<Profile />} />
-             <Route path="settings" element={<Settings />} />
+            <Route index element={<Overview />} />
+            <Route path="chat" element={<ChatPage />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
