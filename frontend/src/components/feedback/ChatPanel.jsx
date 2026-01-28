@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 export const ChatPanel = ({ onClose }) => {
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState([
-        { id: 1, text: "Hello! I'm SecureBank AI. How can I help you with your finances today?", sender: 'ai', timestamp: new Date() }
+        { id: 1, text: "Hello! I'm VaultMind AI. I can help you analyze documents and find information instantly.", sender: 'ai', timestamp: new Date() }
     ]);
     const [isTyping, setIsTyping] = useState(false);
     const scrollRef = useRef(null);
@@ -17,7 +17,7 @@ export const ChatPanel = ({ onClose }) => {
         }
     }, [messages, isTyping]);
 
-    const { user } = useAuth(); // Get user context for Auth if needed later
+    const { user } = useAuth();
 
     const handleSend = async (e) => {
         e.preventDefault();
@@ -71,11 +71,11 @@ export const ChatPanel = ({ onClose }) => {
                         <Bot className="w-4 h-4 text-indigo-300" />
                     </div>
                     <div>
-                        <h3 className="text-white font-medium text-sm">SecureBank AI</h3>
-                        <p className="text-white/40 text-xs flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Online
-                        </p>
+                        <h3 className="text-white font-medium text-sm">VaultMind AI</h3>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse box-shadow-glow"></span>
+                            <span className="text-emerald-400/80 text-[10px] font-medium tracking-wide uppercase">Neural Uplink</span>
+                        </div>
                     </div>
                 </div>
                 <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -84,7 +84,7 @@ export const ChatPanel = ({ onClose }) => {
             </div>
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-transparent to-black/20">
                 {messages.map((msg) => (
                     <motion.div
                         key={msg.id}
@@ -126,7 +126,7 @@ export const ChatPanel = ({ onClose }) => {
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Ask about your finances..."
+                        placeholder="Query the knowledge base..."
                         className="w-full bg-black/20 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-indigo-500/50 transition-all"
                     />
                     <button

@@ -6,11 +6,13 @@ export const FileUploader = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
-    const { user } = useAuth(); // If we need auth token
+    const [error, setError] = useState('');
+    const { user } = useAuth();
 
     const handleDrag = useCallback((e) => {
         e.preventDefault();
         e.stopPropagation();
+        setError('');
         if (e.type === 'dragenter' || e.type === 'dragover') {
             setIsDragging(true);
         } else if (e.type === 'dragleave') {
@@ -22,6 +24,7 @@ export const FileUploader = () => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
+        setError('');
 
         const files = [...e.dataTransfer.files];
         if (files && files[0]) {
@@ -31,21 +34,23 @@ export const FileUploader = () => {
 
     const handleFileInput = async (e) => {
         const files = [...e.target.files];
+        setError('');
         if (files && files[0]) {
             await uploadFile(files[0]);
         }
     };
 
+    const API_URL = import.meta.env.VITE_API_BASE_URL || '';
+
     const uploadFile = async (file) => {
         setUploading(true);
+        setError('');
         const formData = new FormData();
         formData.append('file', file);
 
         try {
-            const response = await fetch('/upload', { // Relative path via proxy
+            const response = await fetch(`${API_URL}/upload`, {
                 method: 'POST',
-                // Headers are auto-set by fetch for FormData, 
-                // Cookies sent automatically
                 headers: {},
                 body: formData
             });
@@ -57,7 +62,8 @@ export const FileUploader = () => {
             setTimeout(() => setUploadedFile(null), 3000); // Clear success msg
         } catch (error) {
             console.error(error);
-            alert("Upload failed. Make sure backend is running.");
+            setError("Upload failed. Make sure backend is running.");
+            setTimeout(() => setError(''), 5000);
         } finally {
             setUploading(false);
         }
@@ -73,6 +79,13 @@ export const FileUploader = () => {
                 </svg>
                 Upload Documents
             </h3>
+
+            {error && (
+                <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    {error}
+                </div>
+            )}
 
             <div
                 onDragEnter={handleDrag}

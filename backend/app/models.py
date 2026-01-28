@@ -4,6 +4,24 @@ from sqlmodel import Field, SQLModel, Relationship, Column
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import ARRAY, Float, JSON
 
+# --- Associations ---
+class UserKnowledgeBaseLink(SQLModel, table=True):
+    __tablename__ = "user_knowledge_base_links"
+    user_id: Optional[int] = Field(default=None, foreign_key="users.id", primary_key=True)
+    knowledge_base_id: Optional[int] = Field(default=None, foreign_key="knowledge_bases.id", primary_key=True)
+
+# --- Knowledge (RAG) ---
+class KnowledgeBase(SQLModel, table=True):
+    __tablename__ = "knowledge_bases"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True)
+    description: Optional[str] = None
+    is_default: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    users: List["User"] = Relationship(back_populates="knowledge_bases", link_model=UserKnowledgeBaseLink)
+    documents: List["Document"] = Relationship(back_populates="knowledge_base")
+
 # --- Auth ---
 class User(SQLModel, table=True):
     __tablename__ = "users"
@@ -18,8 +36,8 @@ class User(SQLModel, table=True):
     folders: List["Folder"] = Relationship(back_populates="user")
     documents: List["Document"] = Relationship(back_populates="user")
     chat_sessions: List["ChatSession"] = Relationship(back_populates="user")
+    knowledge_bases: List["KnowledgeBase"] = Relationship(back_populates="users", link_model=UserKnowledgeBaseLink)
 
-# --- Knowledge (RAG) ---
 class Folder(SQLModel, table=True):
     __tablename__ = "folders"
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -42,11 +60,13 @@ class Document(SQLModel, table=True):
     type: Optional[str] = None
     path_url: Optional[str] = None
     folder_id: Optional[int] = Field(default=None, foreign_key="folders.id")
-    user_id: int = Field(foreign_key="users.id")
+    user_id: int = Field(foreign_key="users.id") # Uploader
+    knowledge_base_id: Optional[int] = Field(default=None, foreign_key="knowledge_bases.id") # RAG Group
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     user: User = Relationship(back_populates="documents")
     folder: Optional[Folder] = Relationship(back_populates="documents")
+    knowledge_base: Optional[KnowledgeBase] = Relationship(back_populates="documents")
     chunks: List["DocumentChunk"] = Relationship(back_populates="document")
 
 class DocumentChunk(SQLModel, table=True):
@@ -69,6 +89,7 @@ class ChatSession(SQLModel, table=True):
     user_id: int = Field(foreign_key="users.id")
     title: str = Field(default="New Chat")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     user: User = Relationship(back_populates="chat_sessions")
     messages: List["ChatMessage"] = Relationship(back_populates="session")

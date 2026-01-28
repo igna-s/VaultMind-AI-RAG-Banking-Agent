@@ -8,6 +8,8 @@ export default function Login() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const { login, registerUser, user } = useAuth();
   const navigate = useNavigate();
@@ -19,17 +21,24 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+
     if (isRegistering) {
       try {
         await registerUser(email, password);
-        alert("Account created successfully! Please log in.");
+        setSuccess("Account created successfully! Please log in.");
         setIsRegistering(false);
         setPassword(''); // clear password for safety
       } catch (e) {
-        // error handled in context
+        setError(e.message);
       }
     } else {
-      await login(email, password);
+      try {
+        await login(email, password);
+      } catch (e) {
+        setError(e.message);
+      }
     }
   };
 
@@ -47,13 +56,25 @@ export default function Login() {
       >
         <div className="mb-8">
           <Mascot isPasswordFocused={passwordFocus} />
-          <h1 className="text-3xl font-bold mt-6 bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
-            SecureBank AI
+          <h1 className="text-3xl font-bold mt-6 bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+            VaultMind AI
           </h1>
           <p className="text-white/50 mt-2">
             {isRegistering ? "Create your secure account" : "Welcome back! Please login."}
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg text-green-200 text-sm">
+            {success}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -103,7 +124,11 @@ export default function Login() {
         </button>
 
         <button
-          onClick={() => setIsRegistering(!isRegistering)}
+          onClick={() => {
+            setIsRegistering(!isRegistering);
+            setError('');
+            setSuccess('');
+          }}
           className="text-indigo-300 hover:text-indigo-200 text-sm font-medium"
         >
           {isRegistering ? "Already have an account? Login" : "New here? Create an account"}

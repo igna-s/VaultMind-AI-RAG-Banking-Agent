@@ -1,30 +1,93 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User as UserIcon, Loader2, Paperclip, Plus, MessageSquare } from 'lucide-react';
+import { Send, Bot, User as UserIcon, Loader2, Paperclip, Plus, MessageSquare, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { FileUploader } from '../../components/dashboard/FileUploader';
-
+import { useLocation } from 'react-router-dom';
 export default function ChatPage() {
-    const [messages, setMessages] = useState([
-        { id: 1, text: "Hello! I'm SecureBank AI. How can I help you with your finances today?", sender: 'ai', timestamp: new Date() }
-    ]);
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const [sessions, setSessions] = useState([
-        { id: 1, title: 'General Inquiry', date: 'Today' },
-        { id: 2, title: 'Loan Application', date: 'Yesterday' }
-    ]);
-    const [activeSession, setActiveSession] = useState(1);
+    const [sessions, setSessions] = useState([]);
+    const [activeSession, setActiveSession] = useState(null);
     const [showUploader, setShowUploader] = useState(false);
+    const [loadingHistory, setLoadingHistory] = useState(false);
 
     const scrollRef = useRef(null);
     const { user } = useAuth();
 
+    // Fetch sessions on mount
+    const fetchSessions = async () => {
+        try {
+            const data = await api.get('/chat/sessions');
+            setSessions(data);
+        } catch (error) {
+            console.error("Failed to fetch sessions:", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchSessions();
+    }, []);
+
+    const location = useLocation();
+
+    // Auto-send if initialQuery exists
+    useEffect(() => {
+        if (location.state?.initialQuery) {
+            setInput(location.state.initialQuery);
+            // Optional: Auto-submit
+            // handleSend(null, location.state.initialQuery);
+            // But for now let's just pre-fill
+        }
+    }, [location.state]);
+
+    // Cleanup state after use so it doesn't persist on reload/navigation
+    useEffect(() => {
+        if (location.state?.initialQuery) {
+            window.history.replaceState({}, document.title);
+        }
+    }, []);
+
+    // Load history when activeSession changes
+    useEffect(() => {
+        const loadHistory = async () => {
+            if (!activeSession) {
+                // If we have a pre-filled input and no session, we just wait for user to send
+                if (!location.state?.initialQuery) {
+                    setMessages([]);
+                } else {
+                    setMessages([]); // Start clean for new query
+                }
+                return;
+            }
+
+            try {
+                setLoadingHistory(true);
+                const data = await api.get(`/chat/sessions/${activeSession}`);
+                setMessages(data.messages);
+            } catch (error) {
+                console.error("Failed to load history:", error);
+            } finally {
+                setLoadingHistory(false);
+            }
+        };
+
+        loadHistory();
+    }, [activeSession]);
+
+    // Auto-scroll
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages, isTyping]);
+
+    const handleNewChat = () => {
+        setActiveSession(null);
+        setMessages([]);
+    };
 
     const handleSend = async (e) => {
         e.preventDefault();
@@ -36,24 +99,18 @@ export default function ChatPage() {
         setIsTyping(true);
 
         try {
-            const response = await fetch('/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // 'Authorization': `Bearer ${user.token}` // Handled by Cookie
-                },
-                body: JSON.stringify({
-                    query: userMsg.text,
-                    session_id: activeSession
-                })
+            const data = await api.post('/chat', {
+                query: userMsg.text,
+                session_id: activeSession
             });
 
-            if (!response.ok) {
-                if (response.status === 429) throw new Error("Rate limit exceeded. Please wait.");
-                throw new Error('Network response was not ok');
+            // If we were in a new chat, the backend created a session
+            if (!activeSession && data.session_id) {
+                setActiveSession(data.session_id);
             }
 
-            const data = await response.json();
+            // Refetch sessions to update order/dates
+            fetchSessions();
 
             const aiMsg = {
                 id: Date.now() + 1,
@@ -81,28 +138,37 @@ export default function ChatPage() {
             {/* Left Sidebar - History */}
             <div className="w-64 border-r border-white/5 bg-[#161420] flex flex-col hidden md:flex">
                 <div className="p-4 border-b border-white/5">
-                    <button className="w-full flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl transition-all font-medium text-sm">
+                    <button
+                        onClick={handleNewChat}
+                        className="w-full flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl transition-all font-medium text-sm"
+                    >
                         <Plus className="w-4 h-4" />
                         New Chat
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                    {sessions.map(session => (
-                        <button
-                            key={session.id}
-                            onClick={() => setActiveSession(session.id)}
-                            className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center gap-3 transition-colors ${activeSession === session.id
-                                ? 'bg-white/10 text-white'
-                                : 'text-white/60 hover:bg-white/5 hover:text-white'
-                                }`}
-                        >
-                            <MessageSquare className="w-4 h-4 opacity-70" />
-                            <div className="truncate flex-1">
-                                <p className="truncate font-medium">{session.title}</p>
-                                <p className="text-xs text-white/30">{session.date}</p>
-                            </div>
-                        </button>
-                    ))}
+                    {sessions.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-white/30">
+                            No recent chats
+                        </div>
+                    ) : (
+                        sessions.map(session => (
+                            <button
+                                key={session.id}
+                                onClick={() => setActiveSession(session.id)}
+                                className={`w-full text-left px-3 py-3 rounded-lg text-sm flex items-center gap-3 transition-colors ${activeSession === session.id
+                                    ? 'bg-white/10 text-white'
+                                    : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                    }`}
+                            >
+                                <MessageSquare className="w-4 h-4 opacity-70" />
+                                <div className="truncate flex-1">
+                                    <p className="truncate font-medium">{session.title}</p>
+                                    <p className="text-xs text-white/30">{session.date}</p>
+                                </div>
+                            </button>
+                        ))
+                    )}
                 </div>
             </div>
 
@@ -112,7 +178,7 @@ export default function ChatPage() {
                 <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-[#161420]/50 backdrop-blur-sm">
                     <div className="flex items-center gap-3">
                         <Bot className="w-5 h-5 text-indigo-400" />
-                        <span className="font-semibold">SecureBank Assistant</span>
+                        <span className="font-semibold">VaultMind AI</span>
                     </div>
                     <button
                         onClick={() => setShowUploader(!showUploader)}
@@ -125,27 +191,35 @@ export default function ChatPage() {
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6" ref={scrollRef}>
-                    {messages.map((msg) => (
-                        <motion.div
-                            key={msg.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`flex items-start gap-4 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
-                        >
-                            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center border
-                                ${msg.sender === 'ai' ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-white/10 border-white/10'}`}>
-                                {msg.sender === 'ai' ? <Bot className="w-5 h-5 text-indigo-400" /> : <UserIcon className="w-5 h-5 text-white/70" />}
-                            </div>
+                    {messages.length === 0 && !loadingHistory ? (
+                        <div className="h-full flex flex-col items-center justify-center text-white/30 space-y-4">
+                            <Bot className="w-12 h-12 opacity-20" />
+                            <p className="text-sm">Start a conversation with VaultMind</p>
+                        </div>
+                    ) : (
+                        messages.map((msg) => (
+                            <motion.div
+                                key={msg.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`flex items-start gap-4 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
+                            >
+                                <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center border
+                                    ${msg.sender === 'ai' ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-white/10 border-white/10'}`}>
+                                    {msg.sender === 'ai' ? <Bot className="w-5 h-5 text-indigo-400" /> : <UserIcon className="w-5 h-5 text-white/70" />}
+                                </div>
 
-                            <div className={`max-w-[70%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm
-                                ${msg.sender === 'ai'
-                                    ? 'bg-[#1e1c29] border border-white/5 text-white/90 rounded-tl-none'
-                                    : 'bg-indigo-600 text-white rounded-tr-none'
-                                }`}>
-                                {msg.text}
-                            </div>
-                        </motion.div>
-                    ))}
+                                <div className={`max-w-[70%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm
+                                    ${msg.sender === 'ai'
+                                        ? 'bg-[#1e1c29] border border-white/5 text-white/90 rounded-tl-none'
+                                        : 'bg-indigo-600 text-white rounded-tr-none'
+                                    }`}>
+                                    {msg.text}
+                                </div>
+                            </motion.div>
+                        ))
+                    )}
+
                     {isTyping && (
                         <div className="flex items-start gap-4">
                             <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
@@ -166,7 +240,7 @@ export default function ChatPage() {
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                placeholder="Message SecureBank AI..."
+                                placeholder="Message VaultMind AI..."
                                 className="w-full bg-[#0f0e17] border border-white/10 rounded-xl pl-5 pr-14 py-4 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-indigo-500/50 transition-all shadow-inner"
                             />
                             <button
@@ -178,7 +252,7 @@ export default function ChatPage() {
                             </button>
                         </form>
                         <p className="text-center text-xs text-white/20 mt-2">
-                            AI responses may vary. Check important financial information.
+                            AI responses may vary. Verify important information.
                         </p>
                     </div>
                 </div>

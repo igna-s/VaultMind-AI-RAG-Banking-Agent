@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const AuthContext = createContext({});
 
@@ -13,6 +14,15 @@ export const AuthProvider = ({ children }) => {
       setUser(JSON.parse(storedUser));
     }
     setLoading(false);
+
+    // Listen for global logout events (e.g. 401 from API)
+    const handleLogout = () => {
+      setUser(null);
+      localStorage.removeItem('user');
+    };
+
+    window.addEventListener('auth:logout', handleLogout);
+    return () => window.removeEventListener('auth:logout', handleLogout);
   }, []);
 
   const login = async (email, password) => {
@@ -23,43 +33,16 @@ export const AuthProvider = ({ children }) => {
       params.append('username', email);
       params.append('password', password);
 
-      const response = await fetch('/auth/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params,
-        credentials: 'include' // Important for cookies
-      });
-
-      // Read response text first to avoid JSON parse errors on empty responses
-      const responseText = await response.text();
-
-      if (!response.ok) {
-        let errorMessage = 'Login failed';
-        if (responseText) {
-          try {
-            const err = JSON.parse(responseText);
-            errorMessage = err.detail || errorMessage;
-          } catch {
-            errorMessage = responseText || errorMessage;
-          }
-        }
-        throw new Error(errorMessage);
-      }
+      // Using api.post which handles Base URL and Cookies automatically
+      const data = await api.post('auth/token', params);
 
       // Token is in HttpOnly cookie, store user info locally
-      const userData = { email };
+      const userData = data.user;
+
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
       console.error('Error logging in:', error);
-      // Don't alert on 500 if handled by UI, but for now specific alert
-      if (error.message.includes('500')) {
-        alert('Server Error (500). Please check backend connection.');
-      } else {
-        alert('Login failed: ' + error.message);
-      }
       throw error;
     } finally {
       setLoading(false);
@@ -69,21 +52,10 @@ export const AuthProvider = ({ children }) => {
   const registerUser = async (email, password) => {
     try {
       setLoading(true);
-      const response = await fetch('/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || 'Registration failed');
-      }
-
+      await api.post('auth/register', { email, password });
       return true;
     } catch (error) {
       console.error('Error registering:', error);
-      alert('Registration failed: ' + error.message);
       throw error;
     } finally {
       setLoading(false);
@@ -93,7 +65,8 @@ export const AuthProvider = ({ children }) => {
   const signOut = () => {
     setUser(null);
     localStorage.removeItem('user');
-    // Clear cookie by making a logout request (optional endpoint)
+    // Clear cookie by making a logout request (optional endpoint, not implemented in backend yet)
+    // api.post('auth/logout').catch(() => {}); 
   };
 
   return (

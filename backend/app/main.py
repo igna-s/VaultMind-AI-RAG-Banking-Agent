@@ -1,9 +1,15 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from datetime import datetime
+from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 from app.database import init_db, get_session, engine
 from app.models import User, ChatSession, ChatMessage, Document, DocumentChunk, Folder
 from app.services.rag import rag_pipeline, get_embedding
 from app.routers.auth import router as auth_router
+from app.routers.auth import router as auth_router
+from app.routers.stats import router as stats_router
+from app.routers.chat import router as chat_router
+from app.routers.admin import router as admin_router
 from app.auth import get_current_user, get_password_hash
 from contextlib import asynccontextmanager
 from typing import List, Optional
@@ -49,24 +55,39 @@ app = FastAPI(title="Banking RAG API", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    print(f"GLOBAL 500 ERROR: {exc}")
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc)},
+    )
+
 from fastapi.middleware.cors import CORSMiddleware
 
 # CORS Configuration - MUST be added before routers
+# TODO: Move these to .env for production
 origins = [
     "http://localhost:5173", # Vite Dev Server
     "http://localhost:4173", # Vite Preview
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:4173",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=True, # Essential for cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(auth_router)
+app.include_router(stats_router)
+app.include_router(chat_router)
+app.include_router(admin_router)
 
 # User dependency imported from app.auth
 
@@ -110,15 +131,19 @@ def chat_endpoint(
         if not chat_session or chat_session.user_id != user.id:
             raise HTTPException(status_code=404, detail="Session not found")
     else:
-        # Find 'General' or create new
-        chat_session = session.exec(
-            select(ChatSession).where(ChatSession.user_id == user.id).where(ChatSession.title == "General")
-        ).first()
-        if not chat_session:
-            chat_session = ChatSession(user_id=user.id, title="General")
-            session.add(chat_session)
-            session.commit()
-            session.refresh(chat_session)
+
+        # Create NEW session with title from query
+        title = chat_request.query[:30] + "..." if len(chat_request.query) > 30 else chat_request.query
+        chat_session = ChatSession(user_id=user.id, title=title)
+        session.add(chat_session)
+        session.commit()
+        session.refresh(chat_session)
+
+    # Update timestamp
+    chat_session.updated_at = datetime.utcnow()
+    session.add(chat_session)
+    session.commit()
+
             
     # Get History (Last 5 messages)
     history = session.exec(
