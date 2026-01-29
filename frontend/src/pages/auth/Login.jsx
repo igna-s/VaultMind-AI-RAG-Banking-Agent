@@ -3,15 +3,19 @@ import { useAuth } from '../../context/AuthContext';
 import { Mascot } from '../../components/feedback/Mascot';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
+import { api } from '../../services/api';
 
 export default function Login() {
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { login, registerUser, user } = useAuth();
+  const { login, registerUser, user, setSession } = useAuth();
   const navigate = useNavigate();
   const [passwordFocus, setPasswordFocus] = useState(false);
 
@@ -19,32 +23,107 @@ export default function Login() {
     if (user) navigate('/dashboard');
   }, [user, navigate]);
 
+  const getFriendlyErrorMessage = (error) => {
+    if (!error) return "An unexpected error occurred.";
+    if (typeof error === 'string') return error;
+
+    if (error.status) {
+      if (error.status >= 500) return "Server error. Please try again later.";
+      if (error.status === 401) return "Invalid credentials. Please check your email and password.";
+      if (error.status === 403) return error.message || "Email not verified. Please verify your email.";
+      if (error.status === 404) return "Resource not found.";
+    }
+
+    if (error.message) return error.message;
+    return "An error occurred. Please try again.";
+  };
+
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      const res = await api.post('/auth/verify-email', { email, code: verificationCode });
+      setSuccess("Email verified! Logging you in...");
+
+      // Auto login after verification
+      try {
+        await login(email, password);
+      } catch (loginError) {
+        setSuccess("Email verified! Please log in.");
+        setShowVerification(false);
+        setVerificationCode('');
+      }
+    } catch (e) {
+      setError(getFriendlyErrorMessage(e));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
     if (isRegistering) {
+      // Client-side password validation
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{10,}$/;
+      if (!passwordRegex.test(password)) {
+        setError("Password must be at least 10 chars, include uppercase, lowercase, number, and special char.");
+        return;
+      }
+
       try {
-        await registerUser(email, password);
-        setSuccess("Account created successfully! Please log in.");
-        setIsRegistering(false);
-        setPassword(''); // clear password for safety
+        const res = await registerUser(email, password);
+        // Register successful, show verification
+        setSuccess(res.message || "Account created! Please enter code sent to email.");
+        setShowVerification(true);
       } catch (e) {
-        setError(e.message);
+        setError(getFriendlyErrorMessage(e));
       }
     } else {
       try {
         await login(email, password);
+        // Force navigation on success, don't just rely on useEffect
+        navigate('/dashboard');
       } catch (e) {
-        setError(e.message);
+        const msg = getFriendlyErrorMessage(e);
+        setError(msg);
+        // If 403 Unverified, show verification
+        if (e.status === 403 && (msg.includes("verify") || msg.includes("verificado"))) {
+          setShowVerification(true);
+          setSuccess("Please enter the verification code sent to your email.");
+        }
       }
+    }
+  };
+
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const res = await api.post('/auth/google', {
+          credential: tokenResponse.access_token,
+          is_access_token: true
+        });
+        setSession(res.user);
+        navigate('/dashboard');
+      } catch (err) {
+        setError("Google Login Failed");
+      }
+    },
+    onError: () => setError("Google Login Failed"),
+  });
+
+  const handleResendCode = async () => {
+    try {
+      const res = await api.post('/auth/resend-verification-code', { email });
+      setSuccess(res.message);
+    } catch (e) {
+      setError(getFriendlyErrorMessage(e));
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Background Ambience */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-10 left-10 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl animate-pulse delay-1000" />
@@ -60,7 +139,9 @@ export default function Login() {
             VaultMind AI
           </h1>
           <p className="text-white/50 mt-2">
-            {isRegistering ? "Create your secure account" : "Welcome back! Please login."}
+            {showVerification
+              ? "Verify your email"
+              : (isRegistering ? "Create your secure account" : "Welcome back! Please login.")}
           </p>
         </div>
 
@@ -76,30 +157,70 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email Address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full input-glass"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onFocus={() => setPasswordFocus(true)}
-            onBlur={() => setPasswordFocus(false)}
-            className="w-full input-glass"
-            required
-          />
+        {showVerification ? (
+          <form onSubmit={handleVerify} className="space-y-4">
+            <input
+              type="text"
+              placeholder="Verification Code (6 digits)"
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value)}
+              className="w-full input-glass text-center text-2xl tracking-widest"
+              required
+            />
+            <button type="submit" className="w-full glass-button py-3 rounded-xl mt-4 font-semibold">
+              Verify Email
+            </button>
 
-          <button type="submit" className="w-full glass-button py-3 rounded-xl mt-4 font-semibold">
-            {isRegistering ? "Register Account" : "Sign In"}
-          </button>
-        </form>
+            <button
+              type="button"
+              onClick={handleResendCode}
+              className="text-indigo-300 hover:text-white text-sm mt-2 block w-full"
+            >
+              Resend Code
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowVerification(false)}
+              className="text-white/50 hover:text-white text-sm mt-4"
+            >
+              Back to Login
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input
+              type="email"
+              placeholder="Email Address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full input-glass"
+              required
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setPasswordFocus(true)}
+              onBlur={() => setPasswordFocus(false)}
+              className="w-full input-glass"
+              required
+            />
+
+            {!isRegistering && (
+              <div className="text-right">
+                <a href="/forgot-password" className="text-xs text-indigo-300 hover:text-white transition-colors">
+                  Forgot your password?
+                </a>
+              </div>
+            )}
+
+            <button type="submit" className="w-full glass-button py-3 rounded-xl mt-4 font-semibold">
+              {isRegistering ? "Register Account" : "Sign In"}
+            </button>
+          </form>
+        )}
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
@@ -111,6 +232,7 @@ export default function Login() {
         </div>
 
         <button
+          onClick={() => handleGoogleLogin()}
           type="button"
           className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 mb-6"
         >

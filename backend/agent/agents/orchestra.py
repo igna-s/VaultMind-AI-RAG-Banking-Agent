@@ -57,7 +57,7 @@ def retrieve_context(query: str, user_id: str, session_id: Optional[str] = None)
     return "\n\n".join(formatted_docs)
 
 main_tools = [
-    ls, read_file, write_file, 
+    # ls, read_file, write_file, 
     write_todos, read_todos, 
     think_tool, 
     tavily_search,

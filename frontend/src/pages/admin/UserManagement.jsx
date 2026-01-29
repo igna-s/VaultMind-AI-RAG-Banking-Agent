@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Search, Edit2, Check, X, Shield } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function UserManagement() {
+    const { refreshUser } = useAuth();
+    const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [kbs, setKbs] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [search, setSearch] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
-    const API_URL = import.meta.env.VITE_API_BASE_URL || '';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     useEffect(() => {
         fetchData();
@@ -35,20 +39,36 @@ export default function UserManagement() {
     const handleSaveUser = async () => {
         if (!selectedUser) return;
 
-        // Update KBs
         try {
+            // Update role if changed
+            const roleRes = await fetch(`${API_URL}/admin/users/${selectedUser.id}/role`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ role: selectedUser.role })
+            });
+
+            const roleData = roleRes.ok ? await roleRes.json() : null;
+
+            // If admin changed their own role, force logout to clear session
+            // Must do this BEFORE KB update since we'll lose admin access
+            if (roleData?.self_changed) {
+                // Clear local storage and force re-login
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+                return;
+            }
+
+            // Update KBs (only if we still have admin access)
             const kbIds = selectedUser.knowledge_bases.map(kb => kb.id);
-            const res = await fetch(`${API_URL}/admin/users/${selectedUser.id}/knowledge_bases`, {
+            const kbRes = await fetch(`${API_URL}/admin/users/${selectedUser.id}/knowledge_bases`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ kb_ids: kbIds }) // The backend expects kb_ids list, wait, endpoint argument query param?
-                // My backend was: def update_user_kbs(user_id: int, kb_ids: List[int], ...)
-                // FastAPI body expects JSON with 'kb_ids' key if defined as such, OR query params.
-                // Let's check backend implementation.
+                body: JSON.stringify({ kb_ids: kbIds })
             });
 
-            if (res.ok) {
+            if (roleRes.ok && kbRes.ok) {
                 fetchData();
                 setSelectedUser(null);
             }
@@ -119,8 +139,8 @@ export default function UserManagement() {
                                 </td>
                                 <td className="p-4">
                                     <span className={`px-2 py-1 rounded text-xs font-medium border ${user.role === 'admin'
-                                            ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                        ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                         }`}>
                                         {user.role}
                                     </span>
@@ -177,6 +197,31 @@ export default function UserManagement() {
                                 </div>
 
                                 <div>
+                                    <label className="block text-xs font-semibold text-white/40 uppercase mb-3">Role</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setSelectedUser({ ...selectedUser, role: 'user' })}
+                                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${selectedUser.role === 'user'
+                                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                                                : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
+                                                }`}
+                                        >
+                                            User
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectedUser({ ...selectedUser, role: 'admin' })}
+                                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${selectedUser.role === 'admin'
+                                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+                                                : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
+                                                }`}
+                                        >
+                                            <Shield className="w-4 h-4 inline-block mr-1" />
+                                            Admin
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
                                     <label className="block text-xs font-semibold text-white/40 uppercase mb-3">Assigned Knowledge Bases</label>
                                     <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
                                         {kbs.map(kb => {
@@ -195,8 +240,8 @@ export default function UserManagement() {
                                                         setSelectedUser({ ...selectedUser, knowledge_bases: newKbs });
                                                     }}
                                                     className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${isSelected
-                                                            ? 'bg-indigo-600/20 border-indigo-500/50 text-white'
-                                                            : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10'
+                                                        ? 'bg-indigo-600/20 border-indigo-500/50 text-white'
+                                                        : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10'
                                                         }`}
                                                 >
                                                     <div className="flex flex-col">

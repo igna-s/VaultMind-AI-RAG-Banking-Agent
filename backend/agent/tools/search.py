@@ -139,7 +139,7 @@ def tavily_search(
 {chr(10).join(summaries)}
 
 Files: {', '.join(saved_files)}
-💡 Use read_file() to access full details when needed."""
+
 
     return Command(
         update={

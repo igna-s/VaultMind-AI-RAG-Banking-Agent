@@ -13,7 +13,7 @@ export default function KnowledgeManagement() {
     const [newKbName, setNewKbName] = useState('');
     const [newKbDesc, setNewKbDesc] = useState('');
 
-    const API_URL = import.meta.env.VITE_API_BASE_URL || '';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     useEffect(() => {
         fetchKbs();
@@ -50,12 +50,17 @@ export default function KnowledgeManagement() {
     const handleCreateKb = async (e) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${API_URL}/admin/knowledge_bases?name=${encodeURIComponent(newKbName)}&description=${encodeURIComponent(newKbDesc)}`, {
+            const res = await fetch(`${API_URL}/admin/knowledge_bases`, {
                 method: 'POST',
-                credentials: 'include'
-            }); // Note: Endpoint expects query params or maybe I should change to body? 
-            // My backend: def create_kb(name: str, description: Optional[str] = None, ...)
-            // FastAPI defaults scalars to query params if not Pydantic model.
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: newKbName,
+                    description: newKbDesc || null
+                })
+            });
 
             if (res.ok) {
                 fetchKbs();
@@ -96,6 +101,23 @@ export default function KnowledgeManagement() {
         }
     };
 
+    const toggleDefault = async () => {
+        if (!selectedKb) return;
+        try {
+            const res = await fetch(`${API_URL}/admin/knowledge_bases/${selectedKb.id}/default`, {
+                method: 'PATCH',
+                credentials: 'include'
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setSelectedKb({ ...selectedKb, is_default: updated.is_default });
+                fetchKbs(); // Refresh list
+            }
+        } catch (error) {
+            console.error("Failed to toggle default", error);
+        }
+    };
+
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 h-full flex flex-col">
             <header className="flex items-center justify-between">
@@ -122,14 +144,17 @@ export default function KnowledgeManagement() {
                                 key={kb.id}
                                 onClick={() => setSelectedKb(kb)}
                                 className={`w-full text-left p-4 rounded-xl border transition-all group ${selectedKb?.id === kb.id
-                                        ? 'bg-indigo-600/20 border-indigo-500/50 text-white shadow-inner'
-                                        : 'bg-white/5 border-transparent text-white/70 hover:bg-white/10'
+                                    ? 'bg-indigo-600/20 border-indigo-500/50 text-white shadow-inner'
+                                    : 'bg-white/5 border-transparent text-white/70 hover:bg-white/10'
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
                                     <Folder className={`w-5 h-5 ${selectedKb?.id === kb.id ? 'text-indigo-400' : 'text-white/40 group-hover:text-white/60'}`} />
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="font-medium truncate">{kb.name}</h4>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-medium truncate">{kb.name}</h4>
+                                            {kb.is_default && <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 rounded">Default</span>}
+                                        </div>
                                         <p className="text-xs opacity-50 truncate">{kb.description || 'No description'}</p>
                                     </div>
                                     <span className="text-xs bg-black/20 px-2 py-1 rounded text-white/40">{kb.document_count || 0}</span>
@@ -150,7 +175,18 @@ export default function KnowledgeManagement() {
                         <>
                             <div className="flex items-center justify-between mb-6 pb-6 border-b border-white/5">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-white mb-1">{selectedKb.name}</h2>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <h2 className="text-2xl font-bold text-white">{selectedKb.name}</h2>
+                                        <button
+                                            onClick={toggleDefault}
+                                            className={`px-2 py-1 text-xs font-medium rounded transition-colors ${selectedKb.is_default
+                                                ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                                                : 'bg-white/10 text-white/40 hover:bg-white/20 hover:text-white/60'
+                                                }`}
+                                        >
+                                            {selectedKb.is_default ? '★ Default' : '☆ Set as Default'}
+                                        </button>
+                                    </div>
                                     <p className="text-white/50">{selectedKb.description}</p>
                                 </div>
                                 <div className="relative overflow-hidden group">
@@ -164,8 +200,8 @@ export default function KnowledgeManagement() {
                                     <label
                                         htmlFor="docUpload"
                                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-all ${uploading
-                                                ? 'bg-white/10 text-white/40 cursor-wait'
-                                                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                            ? 'bg-white/10 text-white/40 cursor-wait'
+                                            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
                                             }`}
                                     >
                                         {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}

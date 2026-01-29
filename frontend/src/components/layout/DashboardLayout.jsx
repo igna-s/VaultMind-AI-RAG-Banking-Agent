@@ -10,6 +10,7 @@ export const DashboardLayout = () => {
 
   const navItems = user?.role === 'admin' ? [
     { icon: LayoutDashboard, label: 'Overview', path: '/dashboard' },
+    { icon: MessageSquare, label: 'Chat', path: '/dashboard/chat' },
     { icon: Database, label: 'Knowledge Base', path: '/dashboard/documents' },
     { icon: Users, label: 'Users', path: '/dashboard/users' },
   ] : [

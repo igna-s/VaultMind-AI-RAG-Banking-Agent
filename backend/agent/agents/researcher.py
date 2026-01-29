@@ -9,7 +9,7 @@ from langgraph.prebuilt import create_react_agent
 from agent.state import DeepAgentState
 from agent.tools.search import tavily_search
 from agent.tools.general import think_tool
-from agent.tools.filesystem import read_file
+# from agent.tools.filesystem import read_file
 
 # --- Configuración de modelos ---
 model = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.0)
@@ -38,7 +38,7 @@ Stop after you have found sufficient information or if you have searched 5 times
 </Limit>
 """
 
-research_tools = [tavily_search, think_tool, read_file]
+research_tools = [tavily_search, think_tool] # read_file removed
 
 # Create the agent
 # functionality-wise, create_react_agent returns a CompiledGraph

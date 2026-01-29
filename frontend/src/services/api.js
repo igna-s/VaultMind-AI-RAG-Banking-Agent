@@ -1,7 +1,6 @@
-// Dynamically select backend URL based on current hostname to ensure SameSite cookie compliance
-const API_URL = window.location.hostname === '127.0.0.1'
-    ? 'http://127.0.0.1:8000'
-    : 'http://localhost:8000';
+// Dynamically select backend URL based on environment variables
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 
 /**
  * Custom fetch wrapper that handles:
@@ -52,12 +51,15 @@ async function request(endpoint, options = {}) {
 
         // Handle 401 Unauthorized globally
         if (response.status === 401) {
-            // Dispatch a custom event or call a global logout handler if possible.
-            // For now, we'll throw a specific error that AuthContext can catch.
-            // Alternatively, we could clear local storage here effectively logging out the user from the frontend perspective immediately.
+            // Token expired or invalid
             localStorage.removeItem('user');
-            window.dispatchEvent(new Event('auth:logout')); // Simple event bus
+            window.dispatchEvent(new Event('auth:logout'));
         }
+
+        // Handle 403 Forbidden (sometimes used for invalid session too, but distinct from unverified email)
+        // BE CAREFUL: We return 403 for unverified email too. We shouldn't logout automatically then.
+        // Let's rely on the specific error message or context.
+        // For now, only logout on 401 which is strictly "Unauthenticated".
 
         // Parse response
         const contentType = response.headers.get('content-type');
@@ -78,7 +80,7 @@ async function request(endpoint, options = {}) {
 
         return data;
     } catch (error) {
-        console.error('API Request Error:', error);
+        // console.error('API Request Error:', error);
         throw error;
     }
 }

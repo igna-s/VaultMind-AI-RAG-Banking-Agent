@@ -41,23 +41,25 @@ export default function Overview() {
         }
     }, [isAdmin]);
 
-    // Helper to get bar height from data
-    const getBarHeight = (index) => {
-        // index 0 = 24h ago, 23 = now
-        // activityData array might be sparse or unsorted? Backend sorts by ASC hour.
-        // We need to map hours to indices or just take last 24 points.
-        // Simple mapping: if we have less than 24 points, fill from right?
-        // Let's just index directly if available, or 0.
-        // activityData is [{hour: "10:00", count: 5}, ...]
-        if (!activityData || activityData.length === 0) return 5; // minimal height
+    // Helper to get bar heights from token data
+    const getDynamicMaxTokens = () => {
+        if (!activityData || activityData.length === 0) return 1000;
+        const maxVal = Math.max(...activityData.map(d => Math.max(d.groq || 0, d.retriever || 0)));
+        return maxVal > 100 ? maxVal : 100; // Minimum scale 100
+    };
 
-        // This is a rough visualization. 
-        // Let's just use modulo to pick data points if they exist
+    const getTokenData = (index) => {
+        if (!activityData || activityData.length === 0) return { groq: 5, retriever: 5 };
+
         const dataPoint = activityData[index % activityData.length];
-        // Real implementation should match hours.
-        // For MVP, if we have data, use the count as % height (scaled)
-        const count = dataPoint ? dataPoint.count : 0;
-        return Math.min(count * 20 + 5, 100); // Scale up
+        if (!dataPoint) return { groq: 5, retriever: 5 };
+
+        const maxTokens = getDynamicMaxTokens();
+
+        return {
+            groq: Math.min((dataPoint.groq || 0) / maxTokens * 100 + 5, 100),
+            retriever: Math.min((dataPoint.retriever || 0) / maxTokens * 100 + 5, 100)
+        };
     };
 
     const handlePromptClick = (text) => {
@@ -124,28 +126,41 @@ export default function Overview() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* System Health / Activity */}
+                        {/* Token Usage Chart */}
                         <motion.div
                             initial={{ opacity: 0, scale: 0.98 }}
                             animate={{ opacity: 1, scale: 1 }}
                             className="glass-panel p-8 rounded-3xl min-h-[300px] flex flex-col border border-white/5 bg-gradient-to-b from-white/5 to-transparent"
                         >
-                            <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-                                <Activity className="w-5 h-5 text-emerald-400" />
-                                Neural Engine Activity
-                            </h3>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-emerald-400" />
+                                    Token Usage (24h)
+                                </h3>
+                                <div className="flex gap-4 text-xs">
+                                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-purple-500"></span> Groq (LLM)</span>
+                                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-500"></span> Retriever</span>
+                                </div>
+                            </div>
 
-                            <div className="flex-1 flex items-end justify-center gap-2 h-40 mt-4 px-4 overflow-hidden relative">
-                                {[...Array(24)].map((_, i) => (
-                                    <div
-                                        key={i}
-                                        className="w-full bg-emerald-500/20 rounded-t-sm transition-all duration-1000"
-                                        style={{
-                                            height: `${getBarHeight(i)}%`,
-                                            maxWidth: '16px'
-                                        }}
-                                    />
-                                ))}
+                            <div className="flex-1 flex items-end justify-center gap-1 h-40 mt-4 px-4 overflow-hidden relative">
+                                {[...Array(24)].map((_, i) => {
+                                    const data = getTokenData(i);
+                                    return (
+                                        <div key={i} className="w-full flex flex-col items-center gap-0.5" style={{ maxWidth: '16px' }}>
+                                            <div
+                                                className="w-full bg-purple-500/60 rounded-t-sm transition-all duration-1000"
+                                                style={{ height: `${data.groq}%` }}
+                                                title={`Groq: ${activityData[i % activityData.length]?.groq || 0} tokens`}
+                                            />
+                                            <div
+                                                className="w-full bg-emerald-500/60 rounded-t-sm transition-all duration-1000"
+                                                style={{ height: `${data.retriever}%` }}
+                                                title={`Retriever: ${activityData[i % activityData.length]?.retriever || 0} tokens`}
+                                            />
+                                        </div>
+                                    );
+                                })}
                                 <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
                             </div>
                             <div className="mt-4 flex justify-between text-xs text-white/30 font-mono uppercase tracking-wider">

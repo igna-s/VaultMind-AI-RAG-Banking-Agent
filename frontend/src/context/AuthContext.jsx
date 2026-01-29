@@ -69,8 +69,27 @@ export const AuthProvider = ({ children }) => {
     // api.post('auth/logout').catch(() => {}); 
   };
 
+  const setSession = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const refreshUser = async () => {
+    try {
+      const userData = await api.get('auth/me');
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      return userData;
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      // If refresh fails, sign out
+      signOut();
+      return null;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, registerUser, signOut }}>
+    <AuthContext.Provider value={{ user, loading, login, registerUser, signOut, setSession, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

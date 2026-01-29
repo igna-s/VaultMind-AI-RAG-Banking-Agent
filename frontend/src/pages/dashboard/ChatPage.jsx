@@ -1,10 +1,73 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Send, Bot, User as UserIcon, Loader2, Paperclip, Plus, MessageSquare, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { FileUploader } from '../../components/dashboard/FileUploader';
 import { useLocation } from 'react-router-dom';
+
+const ReasoningSteps = ({ steps, status }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const bottomRef = useRef(null);
+    const stepsArray = steps || [];
+
+    useEffect(() => {
+        if (isExpanded && bottomRef.current) {
+            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [stepsArray.length, isExpanded]);
+
+    // Get display text for the latest status
+    const getLatestText = () => {
+        if (stepsArray.length > 0) {
+            const lastStep = stepsArray[stepsArray.length - 1];
+            return typeof lastStep === 'object' ? (lastStep.content || lastStep.status || lastStep.thought) : lastStep;
+        }
+        return status || 'Processing...';
+    };
+
+    return (
+        <div className="flex flex-col gap-2 mb-2 bg-black/20 p-3 rounded-lg border border-white/5 cursor-pointer hover:bg-black/30 transition-colors group"
+            onClick={() => setIsExpanded(!isExpanded)}>
+
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Loader2 className={`w-3 h-3 text-indigo-400 ${status ? 'animate-spin' : ''}`} />
+                    <span className="text-[10px] font-bold text-indigo-300/60 uppercase tracking-widest group-hover:text-indigo-300 transition-colors">
+                        Reasoning Process {stepsArray.length > 0 ? `(${stepsArray.length})` : ''}
+                    </span>
+                </div>
+                {stepsArray.length > 0 && (
+                    <span className="text-[10px] text-white/30 group-hover:text-white/50">{isExpanded ? 'Collapse' : 'Expand'}</span>
+                )}
+            </div>
+
+            {isExpanded && stepsArray.length > 0 ? (
+                <div className="space-y-1.5 mt-2">
+                    {stepsArray.map((step, idx) => {
+                        const stepText = typeof step === 'object' ? (step.content || step.status || step.thought || JSON.stringify(step)) : step;
+                        return (
+                            <div key={idx} className="flex items-start gap-2 text-xs text-indigo-100/80 font-mono tracking-tight leading-relaxed animate-in fade-in slide-in-from-top-1 duration-200">
+                                <span className="text-white/20 text-[10px] mt-0.5 select-none w-4 text-right">{(idx + 1)}</span>
+                                <span className="flex-1 opacity-90">{stepText}</span>
+                            </div>
+                        );
+                    })}
+                    <div ref={bottomRef} />
+                </div>
+            ) : (
+                <div className="mt-1 flex items-start gap-2 text-xs text-indigo-100/60 font-mono animate-in fade-in duration-200">
+                    <span className="text-white/20 text-[10px] mt-0.5 w-4 text-right">{stepsArray.length > 0 ? 'Latest:' : ''}</span>
+                    <span className="line-clamp-1 italic">{getLatestText()}</span>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
 export default function ChatPage() {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -37,9 +100,6 @@ export default function ChatPage() {
     useEffect(() => {
         if (location.state?.initialQuery) {
             setInput(location.state.initialQuery);
-            // Optional: Auto-submit
-            // handleSend(null, location.state.initialQuery);
-            // But for now let's just pre-fill
         }
     }, [location.state]);
 
@@ -54,11 +114,10 @@ export default function ChatPage() {
     useEffect(() => {
         const loadHistory = async () => {
             if (!activeSession) {
-                // If we have a pre-filled input and no session, we just wait for user to send
                 if (!location.state?.initialQuery) {
                     setMessages([]);
                 } else {
-                    setMessages([]); // Start clean for new query
+                    setMessages([]);
                 }
                 return;
             }
@@ -97,32 +156,78 @@ export default function ChatPage() {
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsTyping(true);
+        const typingId = Date.now() + 1;
+
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
         try {
-            const data = await api.post('/chat', {
-                query: userMsg.text,
-                session_id: activeSession
+            const response = await fetch(`${API_URL}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    query: userMsg.text,
+                    session_id: activeSession
+                })
             });
 
-            // If we were in a new chat, the backend created a session
-            if (!activeSession && data.session_id) {
-                setActiveSession(data.session_id);
+            if (!response.ok) throw new Error('Network response was not ok');
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let aiMsg = { id: typingId, text: '', sender: 'ai', timestamp: new Date(), status: 'Starting...', steps: [] };
+            setMessages(prev => [...prev, aiMsg]);
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    try {
+                        const data = JSON.parse(line);
+
+                        if (data.type === 'status') {
+                            setMessages(prev => prev.map(msg => {
+                                if (msg.id === typingId) {
+                                    const newSteps = [...(msg.steps || []), data.content];
+                                    return { ...msg, status: data.content, steps: newSteps };
+                                }
+                                return msg;
+                            }));
+                        } else if (data.type === 'answer') {
+                            setMessages(prev => prev.map(msg =>
+                                msg.id === typingId ? {
+                                    ...msg,
+                                    text: data.response,
+                                    status: null,
+                                    // Always use backend steps - they now include all status messages
+                                    steps: data.reasoning_data?.steps || msg.steps || []
+                                } : msg
+                            ));
+
+                            if (!activeSession && data.session_id) {
+                                setActiveSession(data.session_id);
+                            }
+                            fetchSessions();
+                        } else if (data.type === 'error') {
+                            setMessages(prev => prev.map(msg =>
+                                msg.id === typingId ? { ...msg, text: `Error: ${data.content}`, status: null } : msg
+                            ));
+                        }
+                    } catch (e) {
+                        console.error("JSON Parse Error", e);
+                    }
+                }
             }
 
-            // Refetch sessions to update order/dates
-            fetchSessions();
-
-            const aiMsg = {
-                id: Date.now() + 1,
-                text: data.response,
-                sender: 'ai',
-                timestamp: new Date()
-            };
-            setMessages(prev => [...prev, aiMsg]);
         } catch (error) {
             console.error("Chat Error:", error);
             const errorMsg = {
-                id: Date.now() + 1,
+                id: Date.now() + 2,
                 text: `Error: ${error.message}`,
                 sender: 'ai',
                 timestamp: new Date()
@@ -130,12 +235,14 @@ export default function ChatPage() {
             setMessages(prev => [...prev, errorMsg]);
         } finally {
             setIsTyping(false);
+            setMessages(prev => prev.map(msg =>
+                msg.id === typingId && msg.status ? { ...msg, status: null } : msg
+            ));
         }
     };
 
     return (
         <div className="flex h-full bg-[#0f0e17] text-white overflow-hidden rounded-2xl border border-white/5">
-            {/* Left Sidebar - History */}
             <div className="w-64 border-r border-white/5 bg-[#161420] flex flex-col hidden md:flex">
                 <div className="p-4 border-b border-white/5">
                     <button
@@ -172,9 +279,7 @@ export default function ChatPage() {
                 </div>
             </div>
 
-            {/* Main Chat Area */}
             <div className="flex-1 flex flex-col relative">
-                {/* Header */}
                 <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-[#161420]/50 backdrop-blur-sm">
                     <div className="flex items-center gap-3">
                         <Bot className="w-5 h-5 text-indigo-400" />
@@ -189,7 +294,6 @@ export default function ChatPage() {
                     </button>
                 </div>
 
-                {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6" ref={scrollRef}>
                     {messages.length === 0 && !loadingHistory ? (
                         <div className="h-full flex flex-col items-center justify-center text-white/30 space-y-4">
@@ -214,25 +318,47 @@ export default function ChatPage() {
                                         ? 'bg-[#1e1c29] border border-white/5 text-white/90 rounded-tl-none'
                                         : 'bg-indigo-600 text-white rounded-tr-none'
                                     }`}>
-                                    {msg.text}
+                                    <div className="space-y-3">
+                                        {/* Show reasoning steps if we have any OR if still processing */}
+                                        {(msg.steps?.length > 0 || msg.status) && (
+                                            <ReasoningSteps steps={msg.steps || []} status={msg.status} />
+                                        )}
+
+                                        {/* Only show text content when NOT currently processing (no status) */}
+                                        {!msg.status && msg.text && (
+                                            <div className="prose prose-invert prose-sm max-w-none leading-relaxed text-gray-100">
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    components={{
+                                                        p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                                                        a: ({ node, ...props }) => <a className="text-indigo-400 hover:text-indigo-300 underline" target="_blank" rel="noopener noreferrer" {...props} />,
+                                                        ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
+                                                        ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
+                                                        li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+                                                        h1: ({ node, ...props }) => <h1 className="text-xl font-bold mb-3 mt-4 text-white" {...props} />,
+                                                        h2: ({ node, ...props }) => <h2 className="text-lg font-bold mb-2 mt-4 text-indigo-200" {...props} />,
+                                                        h3: ({ node, ...props }) => <h3 className="text-base font-bold mb-2 mt-3 text-indigo-300" {...props} />,
+                                                        code: ({ node, inline, className, children, ...props }) => {
+                                                            return inline ?
+                                                                <code className="bg-white/10 px-1 py-0.5 rounded text-xs font-mono text-indigo-200" {...props}>{children}</code> :
+                                                                <code className="block bg-black/30 p-3 rounded-lg text-xs font-mono my-2 overflow-x-auto text-indigo-100" {...props}>{children}</code>
+                                                        }
+                                                    }}
+                                                >
+                                                    {msg.text}
+                                                </ReactMarkdown>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </motion.div>
                         ))
                     )}
 
-                    {isTyping && (
-                        <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-                                <Bot className="w-5 h-5 text-indigo-400" />
-                            </div>
-                            <div className="bg-[#1e1c29] border border-white/5 px-4 py-3 rounded-2xl rounded-tl-none">
-                                <Loader2 className="w-4 h-4 text-white/40 animate-spin" />
-                            </div>
-                        </div>
-                    )}
+
+                    {/* Removed duplicate typing indicator - already shown in message status */}
                 </div>
 
-                {/* Input Area */}
                 <div className="p-4 border-t border-white/5 bg-[#161420]">
                     <div className="max-w-4xl mx-auto relative">
                         <form onSubmit={handleSend} className="relative">
@@ -258,7 +384,6 @@ export default function ChatPage() {
                 </div>
             </div>
 
-            {/* Right Panel - Uploads */}
             <AnimatePresence>
                 {showUploader && (
                     <motion.div

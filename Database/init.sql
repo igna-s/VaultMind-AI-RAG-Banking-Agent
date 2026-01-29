@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS users (
     status TEXT DEFAULT 'active',
     role TEXT DEFAULT 'user', -- RBAC Support
     is_active BOOLEAN DEFAULT TRUE,
+    is_verified BOOLEAN DEFAULT FALSE,
+    verification_code TEXT,
+    reset_token TEXT,
+    reset_token_expires_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Audit
 );
 
@@ -42,6 +46,18 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='is_active') THEN
         ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='is_verified') THEN
+        ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='verification_code') THEN
+        ALTER TABLE users ADD COLUMN verification_code TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='reset_token') THEN
+        ALTER TABLE users ADD COLUMN reset_token TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='reset_token_expires_at') THEN
+        ALTER TABLE users ADD COLUMN reset_token_expires_at TIMESTAMP;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='created_at') THEN
         ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     END IF;
@@ -50,6 +66,24 @@ END $$;
 -- =============================================================================
 -- 2. KNOWLEDGE MODULE
 -- =============================================================================
+
+-- Table: knowledge_bases
+CREATE TABLE IF NOT EXISTS knowledge_bases (
+    id SERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT,
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table: user_knowledge_base_links (Many-to-Many)
+CREATE TABLE IF NOT EXISTS user_knowledge_base_links (
+    user_id INTEGER NOT NULL,
+    knowledge_base_id INTEGER NOT NULL,
+    PRIMARY KEY (user_id, knowledge_base_id),
+    CONSTRAINT fk_link_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_link_kb FOREIGN KEY (knowledge_base_id) REFERENCES knowledge_bases(id) ON DELETE CASCADE
+);
 
 -- Table: folders (Recursive structure)
 CREATE TABLE IF NOT EXISTS folders (
@@ -81,9 +115,11 @@ CREATE TABLE IF NOT EXISTS documents (
     path_url TEXT,
     folder_id INTEGER,
     user_id INTEGER NOT NULL,
+    knowledge_base_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_documents_folder FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL,
-    CONSTRAINT fk_documents_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_documents_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_documents_kb FOREIGN KEY (knowledge_base_id) REFERENCES knowledge_bases(id) ON DELETE SET NULL
 );
 
 -- Idempotency for documents
@@ -97,6 +133,9 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='documents' AND column_name='path_url') THEN
         ALTER TABLE documents ADD COLUMN path_url TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='documents' AND column_name='knowledge_base_id') THEN
+        ALTER TABLE documents ADD COLUMN knowledge_base_id INTEGER REFERENCES knowledge_bases(id) ON DELETE SET NULL;
     END IF;
 END $$;
 
@@ -116,7 +155,7 @@ CREATE TABLE IF NOT EXISTS document_chunks (
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='document_chunks' AND column_name='embedding') THEN
-        ALTER TABLE document_chunks ADD COLUMN embedding vector(1536);
+        ALTER TABLE document_chunks ADD COLUMN embedding vector(1024);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='document_chunks' AND column_name='metadata') THEN
         ALTER TABLE document_chunks ADD COLUMN metadata JSONB DEFAULT '{}';
@@ -165,6 +204,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chat_messages' AND column_name='used_sources') THEN
         ALTER TABLE chat_messages ADD COLUMN used_sources JSONB DEFAULT '[]';
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chat_messages' AND column_name='reasoning_data') THEN
+        ALTER TABLE chat_messages ADD COLUMN reasoning_data JSONB DEFAULT '{}';
+    END IF;
 END $$;
 
 -- =============================================================================
@@ -176,9 +218,11 @@ CREATE INDEX IF NOT EXISTS idx_folders_user_id ON folders(user_id);
 CREATE INDEX IF NOT EXISTS idx_folders_parent_id ON folders(parent_folder_id);
 CREATE INDEX IF NOT EXISTS idx_documents_folder_id ON documents(folder_id);
 CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id);
+CREATE INDEX IF NOT EXISTS idx_documents_kb_id ON documents(knowledge_base_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON chat_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_session_id ON chat_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_bases_name ON knowledge_bases(name);
 
 -- HNSW Index for Vector Similarity Search (using Cosine Distance)
 -- Note: existing data might delay this index creation, but it works on empty or populated tables.
@@ -189,3 +233,14 @@ USING hnsw (embedding vector_cosine_ops);
 -- =============================================================================
 -- End of Script
 -- =============================================================================
+
+-- Token Usage Tracking
+CREATE TABLE IF NOT EXISTS token_usage (
+    id SERIAL PRIMARY KEY,
+    hour TIMESTAMP NOT NULL,
+    source VARCHAR(50) NOT NULL,
+    tokens INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS ix_token_usage_hour ON token_usage(hour);

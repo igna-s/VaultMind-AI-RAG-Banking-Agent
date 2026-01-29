@@ -11,7 +11,7 @@ from .models import User
 from .config import settings
 
 # Configuration
-SECRET_KEY = settings.SECRET_KEY if hasattr(settings, "SECRET_KEY") else "CHANGE_THIS_TO_A_SECURE_SECRET_KEY_IN_ENV"
+SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -19,8 +19,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 class UserInfo(BaseModel):
+    id: int
     email: str
     role: str
+    is_verified: bool = False
+    verification_code: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str

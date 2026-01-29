@@ -54,7 +54,9 @@ def get_session_history(
                 "id": m.id,
                 "text": m.content,
                 "sender": m.role, # 'user' or 'ai'
-                "timestamp": m.created_at
+                "timestamp": m.created_at,
+                "steps": m.reasoning_data.get("steps", []) if m.reasoning_data else [],
+                "status": None # Clear status for history so text is shown
             }
             for m in messages
         ]

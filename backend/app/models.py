@@ -31,6 +31,10 @@ class User(SQLModel, table=True):
     status: str = Field(default="active")
     role: str = Field(default="user") # 'admin' or 'user'
     is_active: bool = Field(default=True)
+    is_verified: bool = Field(default=False)
+    verification_code: Optional[str] = None
+    reset_token: Optional[str] = None
+    reset_token_expires_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     folders: List["Folder"] = Relationship(back_populates="user")
@@ -101,6 +105,16 @@ class ChatMessage(SQLModel, table=True):
     role: str # user / ai
     content: str
     used_sources: List[Dict[str, Any]] = Field(default=[], sa_column=Column(JSON))
+    reasoning_data: Dict[str, Any] = Field(default={}, sa_column=Column(JSON)) # For Deep Agent steps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     session: ChatSession = Relationship(back_populates="messages")
+
+# --- Token Usage Tracking ---
+class TokenUsage(SQLModel, table=True):
+    __tablename__ = "token_usage"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    hour: datetime = Field(index=True)  # Truncated to hour 
+    source: str  # 'retriever' or 'groq'
+    tokens: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)

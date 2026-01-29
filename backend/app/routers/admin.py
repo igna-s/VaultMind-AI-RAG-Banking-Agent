@@ -1,6 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlmodel import Session, select
+from pydantic import BaseModel
 from app.database import get_session
 from app.models import User, KnowledgeBase, Document, UserKnowledgeBaseLink, DocumentChunk
 from app.auth import get_current_user
@@ -35,10 +36,39 @@ def list_users(
         for u in users
     ]
 
+class UpdateUserKBsRequest(BaseModel):
+    kb_ids: List[int]
+
+class UpdateUserRoleRequest(BaseModel):
+    role: str  # 'user' or 'admin'
+
+@router.patch("/users/{user_id}/role")
+def update_user_role(
+    user_id: int,
+    request: UpdateUserRoleRequest,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user)
+):
+    if request.role not in ["user", "admin"]:
+        raise HTTPException(status_code=400, detail="Role must be 'user' or 'admin'")
+    
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Allow self-demotion - frontend should handle session refresh
+    is_self_change = user.id == admin.id
+    
+    user.role = request.role
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return {"id": user.id, "email": user.email, "role": user.role, "self_changed": is_self_change}
+
 @router.put("/users/{user_id}/knowledge_bases")
 def update_user_kbs(
     user_id: int,
-    kb_ids: List[int],
+    request: UpdateUserKBsRequest,
     session: Session = Depends(get_session),
     admin: User = Depends(get_admin_user)
 ):
@@ -47,13 +77,12 @@ def update_user_kbs(
         raise HTTPException(status_code=404, detail="User not found")
     
     # Clear existing links
-    # This is rough, ideally we sync
     existing_links = session.exec(select(UserKnowledgeBaseLink).where(UserKnowledgeBaseLink.user_id == user_id)).all()
     for link in existing_links:
         session.delete(link)
     
     # Add new links
-    for kb_id in kb_ids:
+    for kb_id in request.kb_ids:
         link = UserKnowledgeBaseLink(user_id=user_id, knowledge_base_id=kb_id)
         session.add(link)
     
@@ -78,7 +107,8 @@ def list_kbs(
                 "id": kb.id,
                 "name": kb.name,
                 "description": kb.description,
-                "document_count": len(kb.documents)
+                "document_count": len(kb.documents),
+                "is_default": kb.is_default
             }
             for kb in kbs
         ]
@@ -86,17 +116,37 @@ def list_kbs(
         print(f"Error listing KBs: {e}")
         return []
 
+class CreateKBRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_default: bool = False
+
 @router.post("/knowledge_bases")
 def create_kb(
-    name: str,
-    description: Optional[str] = None,
+    request: CreateKBRequest,
     session: Session = Depends(get_session),
     admin: User = Depends(get_admin_user)
 ):
-    kb = KnowledgeBase(name=name, description=description)
+    kb = KnowledgeBase(name=request.name, description=request.description, is_default=request.is_default)
     session.add(kb)
     session.commit()
-    return kb
+    session.refresh(kb)
+    return {"id": kb.id, "name": kb.name, "description": kb.description, "is_default": kb.is_default}
+
+@router.patch("/knowledge_bases/{kb_id}/default")
+def toggle_kb_default(
+    kb_id: int,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user)
+):
+    kb = session.get(KnowledgeBase, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge Base not found")
+    kb.is_default = not kb.is_default
+    session.add(kb)
+    session.commit()
+    session.refresh(kb)
+    return {"id": kb.id, "name": kb.name, "is_default": kb.is_default}
 
 # --- Document Management (Admin) ---
 @router.post("/documents/upload")
@@ -106,38 +156,68 @@ async def upload_document_to_kb(
     session: Session = Depends(get_session),
     admin: User = Depends(get_admin_user)
 ):
-    content = (await file.read()).decode("utf-8") # Text files only for MVP
+    file_bytes = await file.read()
+    filename = file.filename or "document"
+    
+    # Extract text based on file type
+    if filename.lower().endswith('.pdf'):
+        # Handle PDF files
+        try:
+            import io
+            from PyPDF2 import PdfReader
+            pdf_reader = PdfReader(io.BytesIO(file_bytes))
+            content = ""
+            for page in pdf_reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    content += page_text + "\n"
+            if not content.strip():
+                raise HTTPException(status_code=400, detail="Could not extract text from PDF. The PDF might be scanned/image-based.")
+        except ImportError:
+            raise HTTPException(status_code=500, detail="PDF processing library not installed")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Error processing PDF: {str(e)}")
+    else:
+        # Handle text files (txt, md, etc.)
+        try:
+            content = file_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                content = file_bytes.decode("latin-1")
+            except:
+                raise HTTPException(status_code=400, detail="Could not decode file. Please upload a text or PDF file.")
     
     # Create Doc
     doc = Document(
-        title=file.filename,
-        user_id=admin.id, # Uploaded by admin
+        title=filename,
+        user_id=admin.id,
         knowledge_base_id=knowledge_base_id,
-        type="text",
+        type="pdf" if filename.lower().endswith('.pdf') else "text",
         path_url="uploaded_content"
     )
     session.add(doc)
     session.commit()
     session.refresh(doc)
     
-    # Chunk & Embed (MVP: single chunk or simplistic split)
-    # 500 char chunks
+    # Chunk & Embed (500 char chunks)
     chunk_size = 500
     chunks = [content[i:i+chunk_size] for i in range(0, len(content), chunk_size)]
     
     for i, chunk_text in enumerate(chunks):
-        embedding = get_embedding(chunk_text[:1000]) # Embed
+        if not chunk_text.strip():
+            continue
+        embedding = get_embedding(chunk_text[:1000])
         chunk = DocumentChunk(
             document_id=doc.id,
             content=chunk_text,
             embedding=embedding,
             chunk_index=i,
-            chunk_metadata={"filename": file.filename}
+            chunk_metadata={"filename": filename}
         )
         session.add(chunk)
     
     session.commit()
-    return {"status": "success", "doc_id": doc.id}
+    return {"status": "success", "doc_id": doc.id, "chunks_created": len(chunks)}
 
 @router.get("/knowledge_bases/{kb_id}/documents")
 def list_kb_documents(
