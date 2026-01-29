@@ -44,11 +44,19 @@ class Settings(BaseSettings):
 
     @field_validator("CORS_ORIGINS", mode="before")
     def parse_cors_origins(cls, v):
-        if isinstance(v, str) and not v.startswith("["):
-            return [origin.strip() for origin in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
+        if isinstance(v, str):
+            if v.startswith("["):
+                # Parse JSON string if user provided brackets
+                import json
+                try:
+                    return json.loads(v)
+                except:
+                    # Fallback cleanup
+                    return [o.strip() for o in v.strip("[]").replace("'", "").replace('"', "").split(",")]
+            else:
+                # Comma separated string
+                return [origin.strip() for origin in v.split(",")]
+        return v
 
     # Email / SMTP
     SMTP_HOST: Optional[str] = None

@@ -10,7 +10,11 @@ Este repositorio está configurado para desplegarse automáticamente en Azure us
 
 ## Configuración Requerida
 
-### 1. Variables de Entorno en Azure App Service
+### 1. Variables de Entorno y Configuración en Azure App Service
+> [!IMPORTANT]
+> **Startup Command:**
+> Asegúrate de configurar el comando de inicio en **Settings -> Configuration -> General Settings -> Startup Command**:
+> `gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app`
 
 Ve a **Azure Portal** -> **banking-rag-auth-api** -> **Settings** -> **Environment variables** y asegúrate de tener configuradas las siguientes variables:
 
