@@ -44,6 +44,7 @@ En tu repositorio de GitHub, ve a **Settings** -> **Secrets and variables** -> *
 
 *   `AZURE_WEBAPP_PUBLISH_PROFILE`: El contenido del archivo de perfil de publicación descargado desde el App Service ("Get publish profile").
 *   `AZURE_STATIC_WEB_APPS_API_TOKEN`: El token de despliegue de la Static Web App ("Manage deployment token").
+*   `GOOGLE_CLIENT_ID`: Tu Client ID de Google (ej: `2549...apps.googleusercontent.com`).
 
 ## Cambios Realizados en el Código
 
