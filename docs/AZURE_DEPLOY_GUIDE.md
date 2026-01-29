@@ -50,6 +50,7 @@ En tu repositorio de GitHub, ve a **Settings** -> **Secrets and variables** -> *
 1.  **Limpieza:** Se eliminaron `print()` de debug y archivos temporales. Los errores críticos se registran en logs.
 2.  **Frontend Build:** Se inyecta `VITE_API_URL` durante el build en GitHub Actions para apuntar al backend de Azure.
 3.  **Backend Config:** Se agregó `gunicorn` para producción y se configuró CORS para aceptar peticiones desde el dominio de la Static Web App.
+4.  **Static Web App Config:** Se agregó `staticwebapp.config.json` para manejar el routing de la SPA (evitar errores 404 de Azure).
 
 ## Verificación
 
