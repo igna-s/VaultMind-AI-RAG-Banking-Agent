@@ -31,3 +31,4 @@ jobs:
           output_location: "dist" # Built app content directory - optional
         env:
           VITE_API_URL: https://banking-rag-auth-api.azurewebsites.net
+          VITE_GOOGLE_CLIENT_ID: 254999893973-vghbkdttplum1r0turpvj2953l3fnmfb.apps.googleusercontent.com
