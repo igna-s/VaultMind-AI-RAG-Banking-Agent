@@ -14,7 +14,7 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL is not set in settings")
 
 # Ensure asyncpg or psycopg2 driver use (we use psycopg2 via sqlalchemy default for sync)
-connect_args = {}
+connect_args = {"connect_timeout": 5} # Fail fast (5s) if DB is unreachable
 if settings.APP_MODE != "DEV":
     connect_args["sslmode"] = "require"
 

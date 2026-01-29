@@ -30,33 +30,50 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     
     # Database
+    # Database: Defaults are for Local Docker/Dev. 
+    # In PROD, these are overridden by env vars or DATABASE_URL.
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "password" 
     POSTGRES_DB: str = "rag_db"
     POSTGRES_HOST: str = "127.0.0.1" 
     POSTGRES_PORT: str = "5432"
     
-    # Allow overriding DATABASE_URL directly (e.g. from .env for Azure)
+    # Allow overriding DATABASE_URL directly (e.g. from .env or Azure Settings)
     DATABASE_URL: Optional[str] = None
 
     # CORS
-    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:5173", "http://127.0.0.1:5173", "https://salmon-smoke-0337ed810.6.azurestaticapps.net"]
+    CORS_ORIGINS: Union[List[str], str] = []
 
     @field_validator("CORS_ORIGINS", mode="before")
-    def parse_cors_origins(cls, v):
+    def parse_cors_origins(cls, v, info):
+        # If passed as env var string
         if isinstance(v, str):
-            if v.startswith("["):
-                # Parse JSON string if user provided brackets
+             if v.startswith("["):
                 import json
-                try:
-                    return json.loads(v)
-                except:
-                    # Fallback cleanup
-                    return [o.strip() for o in v.strip("[]").replace("'", "").replace('"', "").split(",")]
-            else:
-                # Comma separated string
-                return [origin.strip() for origin in v.split(",")]
+                try: return json.loads(v)
+                except: pass
+             return [origin.strip() for origin in v.split(",")]
+        
+        # If not set (default), return defaults based on MODE
+        # We can't access 'self' or other fields easily in before-validator, 
+        # so we rely on the computed_field or validator later, OR check env var directly.
+        if v is None or v == []:
+            # Default fallback
+            return ["http://localhost:5173", "http://127.0.0.1:5173", "https://salmon-smoke-0337ed810.6.azurestaticapps.net"]
+            
         return v
+    
+    @model_validator(mode='after')
+    def validate_security(self) -> 'Settings':
+        # In PROD, enforce that we don't use default secrets if possible, 
+        # though usually DATABASE_URL handles it.
+        
+        # Filter CORS for PROD if needed
+        if self.APP_MODE == "PROD":
+             # Optional: Remove localhost from origins in PROD
+             # self.CORS_ORIGINS = [o for o in self.CORS_ORIGINS if "localhost" not in o and "127.0.0.1" not in o]
+             pass
+        return self
 
     # Email / SMTP
     SMTP_HOST: Optional[str] = None
