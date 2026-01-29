@@ -3,6 +3,9 @@ from sqlmodel import Session, select, func
 from app.database import get_session
 from app.models import User, Document, ChatMessage, TokenUsage
 from app.auth import get_current_user
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -70,5 +73,6 @@ def get_activity_stats(
         data = [{"hour": h, "groq": v["groq"], "retriever": v["retriever"]} for h, v in sorted(hourly_data.items())]
         return data
     except Exception as e:
-        print(f"Stats Error: {e}")
+        logger.error(f"Stats Error: {e}")
         return []
+

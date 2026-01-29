@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from datetime import datetime
 from fastapi.responses import JSONResponse
+import logging
+
+logger = logging.getLogger(__name__)
 from sqlmodel import Session, select
 from app.database import init_db, get_session, engine
 from app.models import User, ChatSession, ChatMessage, Document, DocumentChunk, Folder
@@ -60,7 +63,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     import traceback
-    print(f"GLOBAL 500 ERROR: {exc}")
+    logger.error(f"GLOBAL 500 ERROR: {exc}")
+    # traceback.print_exc() # Optional: keep or remove depending on logger config. Let's keep it but via logger usually better.
+    # For now just cleaning `print`.
     traceback.print_exc()
     return JSONResponse(
         status_code=500,

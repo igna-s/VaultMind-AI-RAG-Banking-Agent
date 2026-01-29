@@ -6,6 +6,9 @@ from app.database import get_session
 from app.models import User, KnowledgeBase, Document, UserKnowledgeBaseLink, DocumentChunk
 from app.auth import get_current_user
 from app.services.rag import get_embedding
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -113,7 +116,7 @@ def list_kbs(
             for kb in kbs
         ]
     except Exception as e:
-        print(f"Error listing KBs: {e}")
+        logger.error(f"Error listing KBs: {e}")
         return []
 
 class CreateKBRequest(BaseModel):

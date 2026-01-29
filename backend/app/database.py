@@ -2,6 +2,9 @@ from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.config import settings
 
@@ -30,7 +33,7 @@ def init_db():
                     connection.execute(text(sql_script))
                     connection.commit()
         except Exception as e:
-            print(f"Warning: Failed to execute init.sql: {e}")
+            logger.warning(f"Failed to execute init.sql: {e}")
 
     with Session(engine) as session:
         session.exec(text("CREATE EXTENSION IF NOT EXISTS vector"))

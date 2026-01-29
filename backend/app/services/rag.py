@@ -4,6 +4,9 @@ from typing import List
 from sqlmodel import Session, select
 from app.models import DocumentChunk, Document, User, UserKnowledgeBaseLink, KnowledgeBase
 from sqlalchemy import func
+import logging
+
+logger = logging.getLogger(__name__)
 
 import voyageai
 
@@ -19,7 +22,7 @@ def get_embedding(text: str) -> List[float]:
             result = vo_client.embed([text], model="voyage-2", input_type="document").embeddings[0]
             return result
         except Exception as e:
-            print(f"Voyage Error: {e}")
+            logger.error(f"Voyage Error: {e}")
             # Fallback mock for dev if API fails
             return [0.0] * 1024 
     

@@ -176,14 +176,9 @@ async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: Session = Depends(get_session)
 ):
-    print(f"DEBUG: Login Request Received for user: {form_data.username}")
-    print(f"DEBUG: Headers: {request.headers}")
     try:
-        print(f"DEBUG: Login attempt for {form_data.username}")
-        print(f"DEBUG: Password received length: {len(form_data.password)}")
         user = authenticate_user(session, form_data.username, form_data.password)
         if not user:
-            print("DEBUG: Authentication failed - Invalid credentials")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
@@ -201,7 +196,7 @@ async def login_for_access_token(
                 detail="Email not verified. Please verify your email first."
             )
             
-        print(f"DEBUG: Login successful for {user.email}")
+
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.email}, expires_delta=access_token_expires
@@ -235,7 +230,7 @@ async def login_for_access_token(
         if isinstance(e, HTTPException):
             raise e
         # Otherwise, 500
-        print(f"CRITICAL ERROR IN LOGIN: {e}")
+        # Critical error logged to file
         with open("error.log", "a") as f:
             f.write(f"CRITICAL ERROR IN LOGIN: {e}\n")
             traceback.print_exc(file=f)
@@ -290,7 +285,7 @@ async def google_login(
         
         if not user:
             # Create new user automatically
-            print(f"INFO: Creating new user from Google Login: {email}")
+            # New user created from Google OAuth
             user = User(
                 email=email,
                 hashed_password=get_password_hash(secrets.token_urlsafe(16)), # Random password
@@ -327,10 +322,10 @@ async def google_login(
         }
 
     except ValueError as e:
-        print(f"Google Token Verification Failed: {e}")
+        # Google token verification failed
         raise HTTPException(status_code=400, detail="Invalid Google Token")
     except Exception as e:
-        print(f"Error in Google Login: {e}")
+        # Error logged to error.log file
         import traceback
         traceback.print_exc()
         try:
