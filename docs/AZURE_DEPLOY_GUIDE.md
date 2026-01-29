@@ -14,7 +14,7 @@ Este repositorio está configurado para desplegarse automáticamente en Azure us
 > [!IMPORTANT]
 > **Startup Command:**
 > Asegúrate de configurar el comando de inicio en **Settings -> Configuration -> General Settings -> Startup Command**:
-> `gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app`
+> `gunicorn --bind=0.0.0.0:8000 --workers=4 -k uvicorn.workers.UvicornWorker app.main:app`
 
 Ve a **Azure Portal** -> **banking-rag-auth-api** -> **Settings** -> **Environment variables** y asegúrate de tener configuradas las siguientes variables:
 
