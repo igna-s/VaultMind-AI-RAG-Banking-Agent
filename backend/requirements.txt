@@ -17,6 +17,8 @@ asyncpg
 passlib[bcrypt]
 python-jose[cryptography]
 bcrypt
+google-auth
+requests
 
 # AI & RAG
 voyageai

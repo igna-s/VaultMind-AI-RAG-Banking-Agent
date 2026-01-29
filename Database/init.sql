@@ -194,6 +194,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     role TEXT NOT NULL, -- 'user' or 'ai'
     content TEXT NOT NULL,
     used_sources JSONB DEFAULT '[]', -- Traceability for RAG
+    reasoning_data JSONB DEFAULT '{}', -- For Deep Agent steps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_messages_session FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
 );

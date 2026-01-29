@@ -37,7 +37,12 @@ class ChatResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Init DB
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        logger.critical(f"CRITICAL DATABASE ERROR: Failed to initialize database on startup: {e}")
+        # logging error but not raising, to allow app to start for debugging
+        pass
     
     # Create default admin if not exists
     with Session(engine) as session:
