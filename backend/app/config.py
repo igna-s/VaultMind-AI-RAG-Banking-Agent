@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
 
     # CORS
-    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:5173", "http://127.0.0.1:5173", "https://salmon-smoke-0937ed810.6.azurestaticapps.net"]
+    CORS_ORIGINS: Union[List[str], str] = ["http://localhost:5173", "http://127.0.0.1:5173", "https://salmon-smoke-0337ed810.6.azurestaticapps.net"]
 
     @field_validator("CORS_ORIGINS", mode="before")
     def parse_cors_origins(cls, v):
