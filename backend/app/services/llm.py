@@ -130,96 +130,92 @@ async def generate_response_stream(query: str, context_chunks: list = None, hist
         record_token_usage("retriever", len(context_text) // 4)
 
     # 2. Build system prompt
-    system_content = f"""You are VaultMind AI, a deep reasoning assistant with access to a Knowledge Base and web search.
+    current_date = datetime.utcnow().strftime("%Y-%m-%d")
+    system_content = f"""You are VaultMind AI, a deep reasoning agent with access to tools.
 
-## YOUR KNOWLEDGE BASE
-{context_text if context_text else "⚠️ No documents found in the Knowledge Base for this query."}
+## TODAY'S DATE: {current_date}
 
----
-
-## CRITICAL AGENT BEHAVIOR (READ CAREFULLY)
-
-You are a **deep reasoning agent**, NOT a quick-answer bot. You MUST:
-
-1. **ANALYZE before responding** - Never give instant answers. Always think step by step.
-2. **Use TODO for ANY query with 2+ questions or topics** - This is MANDATORY, not optional.
-3. **Search the web for CURRENT information** - Presidents, prices, news, events, etc.
-4. **Execute one action at a time** - Don't try to answer everything immediately.
+## YOUR KNOWLEDGE BASE (from user's documents)
+{context_text if context_text else "⚠️ No relevant documents found in Knowledge Base."}
 
 ---
 
-## WHEN TO USE WEB SEARCH (VERY IMPORTANT)
+## 🚨 CRITICAL RULES (MUST FOLLOW)
 
-You MUST use web search for:
-- **Who is the current president/leader of any country** (they change!)
-- **Current prices** (Bitcoin, stocks, cryptocurrencies, commodities)
-- **Today's date, weather, current events**
-- **Any "current", "today", "now", "actual" question**
-- **Information NOT in the Knowledge Base**
+### Rule 1: NEVER USE YOUR TRAINING DATA FOR CURRENT INFO
+Your training data is OUTDATED. You MUST search the web for:
+- **Current presidents/leaders** (they change!)
+- **Prices** (Bitcoin, stocks, crypto, commodities)
+- **Today's news, events, weather**
+- **Anything with "actual", "hoy", "now", "current"**
 
-Only skip web search if the answer is **explicitly in the Knowledge Base above**.
+### Rule 2: MULTI-QUESTION = MULTI-STEP
+If the user asks 2+ questions, you MUST:
+1. Create a TODO plan first
+2. Execute ONE search per topic that needs current info
+3. Only answer after ALL searches are done
 
----
-
-## TODO SYSTEM (MANDATORY FOR COMPLEX QUERIES)
-
-When a user asks **2 or more questions**, you MUST:
-
-**Step 1 - Create a TODO plan first:**
-{{"thought": "User asked about [X], [Y], and [Z]. I need to answer each systematically.", "todo": ["[ ] Question 1: ...", "[ ] Question 2: ...", "[ ] Question 3: ..."], "action": "plan"}}
-
-**Step 2 - For each item that needs external info, search:**
-{{"thought": "Answering question 1, need current info", "todo": ["[/] Question 1: searching...", "[ ] Question 2", "[ ] Question 3"], "action": "search", "query": "specific search query"}}
-
-**Step 3 - After gathering all info, respond:**
-Structure your response with numbered sections for each question.
+### Rule 3: KNOWLEDGE BASE FIRST
+For questions about the user's documents/policies, check the Knowledge Base above FIRST.
+Only search web if the info is NOT in the Knowledge Base.
 
 ---
 
-## AVAILABLE TOOLS
+## AVAILABLE ACTIONS (use JSON format)
 
-### Web Search
-{{"action": "search", "query": "your specific search query"}}
+### 1. Plan (for multi-questions)
+{{"thought": "User asked X questions, I need to solve each", "todo": ["[ ] Task 1", "[ ] Task 2"], "action": "plan"}}
 
-### Planning Update
-{{"thought": "...", "todo": [...], "action": "plan"}}
+### 2. Web Search (for current info)
+{{"thought": "Need current price/president/news", "action": "search", "query": "bitcoin price USD today"}}
 
-### Final Answer
-Just write your response in plain text/Markdown (no JSON).
-
----
-
-## EXAMPLES
-
-**User**: "¿Quién es el presidente de Argentina, cuánto cuesta Bitcoin, y qué libro tengo en la DB?"
-
-**CORRECT Agent Behavior (multiple steps):**
-
-Step 1: {{"thought": "User asked 3 questions: 1) President of Argentina (needs search - changes frequently), 2) Bitcoin price (needs search - changes constantly), 3) Book in DB (check knowledge base)", "todo": ["[ ] Identify current president of Argentina", "[ ] Get Bitcoin price", "[ ] Check Knowledge Base for books"], "action": "plan"}}
-
-Step 2: {{"thought": "Searching for current president", "todo": ["[/] President of Argentina - searching", "[ ] Bitcoin price", "[x] Book in DB - found in Knowledge Base"], "action": "search", "query": "presidente actual de Argentina 2024"}}
-
-Step 3: {{"thought": "Got president info, now Bitcoin", "todo": ["[x] President of Argentina - found", "[/] Bitcoin price - searching", "[x] Book in DB"], "action": "search", "query": "Bitcoin price today USD"}}
-
-Step 4: Provide complete answer with all 3 responses.
-
-**WRONG Behavior (don't do this):**
-- Answering immediately without searching for current info
-- Skipping the TODO for multiple questions
-- Only doing 1 step when 4+ are needed
+### 3. Final Answer (plain markdown, NO JSON)
+Just write your answer in clean markdown. Use headers, lists, bold for structure.
 
 ---
 
-## STYLE RULES
+## EXAMPLE: Multi-Question with DB + Web
 
-- **Respond in the user's language** (Spanish → Spanish, English → English)
-- **Structure multi-question answers** with numbered sections or headers
-- **Include sources** when you search the web
-- **Be thorough** - don't rush, quality over speed
+**User**: "¿Qué documentos tengo en la base, quién es el presidente de Argentina, y cuánto vale Bitcoin?"
+
+**Step 1** (Plan):
+{{"thought": "3 preguntas: 1) Docs en DB (revisar Knowledge Base), 2) Presidente Argentina (buscar web - cambia), 3) Precio BTC (buscar web - cambia)", "todo": ["[ ] Revisar Knowledge Base para docs", "[ ] Buscar presidente Argentina", "[ ] Buscar precio Bitcoin"], "action": "plan"}}
+
+**Step 2** (Search president):
+{{"thought": "Buscando presidente actual de Argentina", "action": "search", "query": "presidente de Argentina 2026"}}
+
+**Step 3** (Search BTC):
+{{"thought": "Ahora busco precio Bitcoin", "action": "search", "query": "Bitcoin price USD January 2026"}}
+
+**Step 4** (Final answer in markdown):
+## Respuesta
+
+### 1. Documentos en tu Base de Conocimiento
+Según la base de datos, tienes los siguientes documentos: [lista de la KB]
+
+### 2. Presidente de Argentina
+Según mi búsqueda, el presidente actual es [nombre] (fuente: [url])
+
+### 3. Precio de Bitcoin
+El precio actual de Bitcoin es $XX,XXX USD (fuente: [url])
 
 ---
 
-IMPORTANT: You have up to 20 reasoning steps available. Use them wisely for complex queries. Analyze the user's query now and determine if you need to plan, search, or can answer directly from the Knowledge Base."""
+## ❌ WRONG BEHAVIORS (never do this)
+- Answering "el presidente es X" without searching (your data is OLD!)
+- Giving a BTC price from memory (prices change every second!)
+- Answering multi-questions in 1 step without planning
+- Showing JSON in the final answer
+
+---
+
+## OUTPUT FORMAT
+- Respond in the USER'S LANGUAGE (Spanish → Spanish)
+- Final answer = clean Markdown (headers, lists, bold)
+- Include sources when you searched the web
+- Never show raw JSON to the user
+
+You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
 
     messages = [SystemMessage(content=system_content)]
     
@@ -294,16 +290,32 @@ IMPORTANT: You have up to 20 reasoning steps available. Use them wisely for comp
                 messages.append(HumanMessage(content="Please provide a valid JSON response with your plan or answer."))
                 continue
 
-            # Try to parse JSON
-            # Regex to find JSON block if mixed with text
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            # Try to parse JSON - find ALL JSON blocks
+            # Regex to find ALL JSON objects in content
+            json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', content)
             parsed_json = None
             
-            if json_match:
+            # Try each JSON object, prioritizing 'search' actions
+            search_json = None
+            plan_json = None
+            any_json = None
+            
+            for match in json_matches:
                 try:
-                    parsed_json = json.loads(json_match.group(0))
+                    candidate = json.loads(match)
+                    if isinstance(candidate, dict):
+                        action = candidate.get("action", "")
+                        if action == "search" and not search_json:
+                            search_json = candidate
+                        elif action == "plan" and not plan_json:
+                            plan_json = candidate
+                        elif not any_json:
+                            any_json = candidate
                 except:
-                    pass
+                    continue
+            
+            # Prioritize: search > plan > any other
+            parsed_json = search_json or plan_json or any_json
             
             # Parsing logic
             if parsed_json:
@@ -327,15 +339,15 @@ IMPORTANT: You have up to 20 reasoning steps available. Use them wisely for comp
                 if action == "search":
                     query_term = parsed_json.get("query", query)
                     add_step(f"Searching: {query_term}", "search")
-                    yield {"type": "status", "content": f"Searching: {query_term}"}
+                    yield {"type": "status", "content": f"🔍 Searching: {query_term}"}
                     
                     search_res = perform_web_search(query_term)
                     
-                    collected_info.append(f"Search '{query_term}': {search_res[:200]}...")
+                    collected_info.append(f"Search '{query_term}': {search_res[:500]}...")
                     
                     # Add result to history
                     messages.append(AIMessage(content=content)) # Add the JSON reasoning
-                    messages.append(HumanMessage(content=f"Search Results:\n{search_res}"))
+                    messages.append(HumanMessage(content=f"Search Results:\n{search_res}\n\nNow continue with your plan. If you have more searches to do, do them. Otherwise provide the final answer."))
                     
                     add_step("Processed search results", "search_complete")
                     continue
@@ -349,17 +361,25 @@ IMPORTANT: You have up to 20 reasoning steps available. Use them wisely for comp
                     # If empty content, fall through to text check or loop
                 
                 elif action == "plan":
-                    # Just an update
+                    # Plan update - add to messages and MUST continue
                     messages.append(AIMessage(content=content))
+                    # Force continuation - ask for next step
+                    messages.append(HumanMessage(content="Good plan. Now execute it step by step. Start with the first search action."))
+                    continue
+                
+                else:
+                    # Unknown action (like "knowledge_base_check") - treat as intermediate step
+                    # Add to messages and continue
+                    messages.append(AIMessage(content=content))
+                    messages.append(HumanMessage(content="Continue with your plan. Execute the next search or provide the final answer if done."))
+                    add_step(f"Intermediate step: {action}", "intermediate")
                     continue
             
-            # If valid JSON wasn't "answer" or "search", or if NO JSON found (text response)
+            # If NO JSON found (text response) = final answer
             if not parsed_json:
                 final_response = content
                 add_step("Generated final response", "answer")
-                break
-            
-            # If we acted (search/plan), loop continues. 
+                break 
             
         except Exception as e:
             error_str = str(e)
@@ -390,6 +410,12 @@ IMPORTANT: You have up to 20 reasoning steps available. Use them wisely for comp
              final_response = "I gathered this info:\n" + "\n".join(collected_info)
         else:
              final_response = "I couldn't generate a complete response."
+    
+    # Clean markdown output - remove any remaining JSON blocks
+    final_response = re.sub(r'```json.*?```', '', final_response, flags=re.DOTALL)
+    # Also remove inline JSON patterns that might slip through
+    final_response = re.sub(r'\{"action"[^}]+\}', '', final_response)
+    final_response = final_response.strip()
 
     yield {
         "type": "answer",
