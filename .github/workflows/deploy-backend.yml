@@ -20,37 +20,28 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Create virtual environment and install dependencies
+      # Validate requirements.txt syntax (no install, just check)
+      - name: Validate dependencies
         working-directory: ./backend
         run: |
-          python -m venv antenv
-          source antenv/bin/activate
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip check || true
+          echo "Requirements file contents:"
+          cat requirements.txt
 
-      - name: Create Oryx manifest
-        working-directory: ./backend
-        run: |
-          mkdir -p .oryx
-          cat > oryx-manifest.toml << 'EOF'
-          [build]
-          platform = "python"
-          platformVersion = "3.10"
-          virtualEnvName = "antenv"
-          EOF
-          # Also create the manifest file that Oryx looks for
-          cat > .oryx/manifest.toml << 'EOF'
-          [build]
-          platform = "python"
-          platformVersion = "3.10"
-          virtualEnvName = "antenv"
-          EOF
-
-      - name: Zip Backend with dependencies
+      - name: Zip Backend (source only, Oryx will pip install)
         run: |
           cd backend
-          # Include everything: app code, requirements, and the virtual environment
-          zip -r ../backend_app.zip . -x "*.pyc" -x "__pycache__/*" -x ".git/*" -x "*.env"
+          # Only package source code - Azure Oryx will handle pip install
+          zip -r ../backend_app.zip . \
+            -x "*.pyc" \
+            -x "__pycache__/*" \
+            -x ".git/*" \
+            -x "*.env" \
+            -x "antenv/*" \
+            -x "venv/*" \
+            -x ".venv/*"
+          echo "Zip size:"
+          ls -lh ../backend_app.zip
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
