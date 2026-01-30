@@ -214,8 +214,10 @@ export default function ChatPage() {
                             }
                             fetchSessions();
                         } else if (data.type === 'error') {
+                            // Sanitize error - don't show technical details
+                            const safeError = 'Hubo un problema al procesar tu solicitud. Por favor, intenta de nuevo.';
                             setMessages(prev => prev.map(msg =>
-                                msg.id === typingId ? { ...msg, text: `Error: ${data.content}`, status: null } : msg
+                                msg.id === typingId ? { ...msg, text: safeError, status: null } : msg
                             ));
                         }
                     } catch (e) {
@@ -226,9 +228,10 @@ export default function ChatPage() {
 
         } catch (error) {
             console.error("Chat Error:", error);
+            // Sanitize error - don't expose technical details to user
             const errorMsg = {
                 id: Date.now() + 2,
-                text: `Error: ${error.message}`,
+                text: 'Lo siento, hubo un error de conexión. Por favor, intenta de nuevo.',
                 sender: 'ai',
                 timestamp: new Date()
             };
