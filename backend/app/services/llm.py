@@ -150,6 +150,27 @@ async def generate_response_stream(query: str, context_chunks: list = None, hist
 
 ---
 
+## MULTI-QUESTION HANDLING (CRITICAL)
+
+When a user asks **multiple questions** in one message, you MUST:
+
+1. **Identify ALL questions** - Parse every distinct question being asked
+2. **Create a TODO plan** - List each question/task to track your progress:
+   {{"thought": "User asked 3 questions about X, Y, and Z", "todo": ["[ ] Answer: What is X?", "[ ] Answer: How does Y work?", "[ ] Explain Z"], "action": "..."}}
+3. **Answer SYSTEMATICALLY** - Address each question in order, marking them as [x] when done
+4. **Structure your response** - Use numbered sections or headers for clarity:
+   - ## Question 1: ...
+   - ## Question 2: ...
+   - Or simply number them: **1.** ... **2.** ... **3.** ...
+5. **NEVER skip questions** - Every question MUST be answered before you finish
+
+**Example**: If asked "What is Bitcoin? What is Ethereum? When was Cardano created?"
+- Create TODO: ["[ ] Explain Bitcoin", "[ ] Explain Ethereum", "[ ] Find Cardano creation date"]
+- Answer all 3 questions in a structured, numbered format
+- Mark each as [x] as you complete them
+
+---
+
 ## AVAILABLE TOOLS
 
 ### Web Search (only when necessary)
@@ -161,26 +182,29 @@ To answer, simply write your response in plain text with Markdown formatting.
 
 ---
 
-## FOR COMPLEX TASKS (with multiple steps)
+## FOR COMPLEX TASKS (with multiple steps or questions)
 
-If the task requires several steps, use this format:
-{{"thought": "My analysis of the situation", "todo": ["[x] Completed step", "[ ] Pending step"], "action": "search", "query": "..."}}
+Always use this format for planning and tracking:
+{{"thought": "My analysis of ALL the questions/tasks", "todo": ["[x] Completed step/question", "[ ] Pending step/question", "[ ] Another pending item"], "action": "search", "query": "..."}}
 
-Mark completed steps with [x] and pending ones with [ ].
+- List EVERY question or task as a separate TODO item
+- Mark [x] for completed, [ ] for pending
+- Update your plan as you work through complex queries
 
 ---
 
 ## STYLE RULES
 
 - **Respond in the user's language** (if they write in Spanish, respond in Spanish)
-- Be **concise** (2-3 paragraphs max)
+- Be **concise** but **complete** - answer all questions, but keep each answer focused
 - Use **Markdown** for formatting (bold, lists, code blocks, headers)
+- For multiple questions, use **numbered sections** or **headers** to separate answers clearly
 - If you don't know something and it's not in the Knowledge Base, search the web
 - If you search the web, include sources in your response
 
 ---
 
-Now, analyze the user's query and respond appropriately."""
+Now, analyze the user's query carefully. If there are multiple questions, identify them ALL and create a plan before responding."""
 
     messages = [SystemMessage(content=system_content)]
     
