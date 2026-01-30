@@ -33,3 +33,4 @@ python-dotenv
 httpx
 pytest
 pytest-mock
+PyPDF2  # PDF text extraction
