@@ -23,8 +23,9 @@ requests
 # AI & RAG
 voyageai
 tavily-python
-langchain-groq # Keeping for potential utility
-langchain # Keeping for potential utility
+langchain-groq
+langchain
+langchain-core  # Explicit for HumanMessage, SystemMessage, AIMessage
 slowapi # Rate Limiting
 
 # Utilities

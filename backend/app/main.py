@@ -134,100 +134,102 @@ async def chat_endpoint(
     """
     
     async def event_generator():
-        # 1. RAG Retrieve
-        yield json.dumps({"type": "status", "content": "Retrieving context..."}) + "\n"
-        context_chunks = rag_pipeline(session, chat_request.query, user.id)
+        try:
+            # 1. RAG Retrieve
+            yield json.dumps({"type": "status", "content": "Retrieving context..."}) + "\n"
+            context_chunks = rag_pipeline(session, chat_request.query, user.id)
+            
+            # 2. Get/Create ChatSession
+            chat_session = None
+            if chat_request.session_id:
+                chat_session = session.get(ChatSession, chat_request.session_id)
+                if not chat_session or chat_session.user_id != user.id:
+                    yield json.dumps({"type": "error", "content": "Session not found"}) + "\n"
+                    return
+            else:
+                # Create NEW session with title from query
+                title = chat_request.query[:30] + "..." if len(chat_request.query) > 30 else chat_request.query
+                chat_session = ChatSession(user_id=user.id, title=title)
+                session.add(chat_session)
+                session.commit()
+                session.refresh(chat_session)
         
-        # 2. Get/Create ChatSession
-        chat_session = None
-        if chat_request.session_id:
-            chat_session = session.get(ChatSession, chat_request.session_id)
-            if not chat_session or chat_session.user_id != user.id:
-                # Error event? For now just handle as new if not valid? 
-                # Better to error out.
-                # Since we are in streaming, we can't easily raise HTTP 404 now if we already started yielding.
-                # But here we haven't gathered much yet.
-                yield json.dumps({"type": "error", "content": "Session not found"}) + "\n"
-                return
-        else:
-            # Create NEW session with title from query
-            title = chat_request.query[:30] + "..." if len(chat_request.query) > 30 else chat_request.query
-            chat_session = ChatSession(user_id=user.id, title=title)
+            # Update timestamp
+            chat_session.updated_at = datetime.utcnow()
             session.add(chat_session)
             session.commit()
-            session.refresh(chat_session)
-    
-        # Update timestamp
-        chat_session.updated_at = datetime.utcnow()
-        session.add(chat_session)
-        session.commit()
-    
-        # Get History (Last 5 messages)
-        history = session.exec(
-            select(ChatMessage)
-            .where(ChatMessage.session_id == chat_session.id)
-            .order_by(ChatMessage.created_at.desc())
-            .limit(5)
-        ).all()
-        history = list(reversed(history)) # Oldest first
-    
-        # 3. LLM Generation (Deep Agent Loop)
-        from app.services.llm import generate_response_stream
         
-        final_result_payload = None
+            # Get History (Last 5 messages)
+            history = session.exec(
+                select(ChatMessage)
+                .where(ChatMessage.session_id == chat_session.id)
+                .order_by(ChatMessage.created_at.desc())
+                .limit(5)
+            ).all()
+            history = list(reversed(history)) # Oldest first
         
-        async for event in generate_response_stream(chat_request.query, context_chunks, history):
-            if event["type"] == "status":
-                yield json.dumps(event) + "\n"
-            elif event["type"] == "answer" or event["type"] == "result":
-                final_result_payload = event
-            elif event["type"] == "error":
-                yield json.dumps(event) + "\n"
-                return
-        
-        if not final_result_payload:
-            yield json.dumps({"type": "error", "content": "No response generated"}) + "\n"
-            return
+            # 3. LLM Generation (Deep Agent Loop)
+            from app.services.llm import generate_response_stream
             
-        response_text = final_result_payload["response"]
-        reasoning_data = final_result_payload["reasoning_data"]
-        sources = final_result_payload["sources"]
-        
-        # Extract sources for storage
-        used_sources_meta = []
-        if context_chunks:
-            for chunk in context_chunks:
-                meta = {
-                    "doc_id": chunk.document_id,
-                    "filename": chunk.document.title if chunk.document else "unknown",
-                    "chunk_id": chunk.id
-                }
-                used_sources_meta.append(meta)
+            final_result_payload = None
+            
+            async for event in generate_response_stream(chat_request.query, context_chunks, history):
+                if event["type"] == "status":
+                    yield json.dumps(event) + "\n"
+                elif event["type"] == "answer" or event["type"] == "result":
+                    final_result_payload = event
+                elif event["type"] == "error":
+                    yield json.dumps(event) + "\n"
+                    return
+            
+            if not final_result_payload:
+                yield json.dumps({"type": "error", "content": "No response generated"}) + "\n"
+                return
                 
-        # 4. Save History    
-        # User message
-        user_msg = ChatMessage(session_id=chat_session.id, role="user", content=chat_request.query)
-        session.add(user_msg)
-        
-        # AI message
-        ai_msg = ChatMessage(
-            session_id=chat_session.id, 
-            role="ai", 
-            content=response_text,
-            used_sources=used_sources_meta,
-            reasoning_data=reasoning_data
-        )
-        session.add(ai_msg)
-        session.commit()
-        
-        # Yield Final Answer
-        yield json.dumps({
-            "type": "answer",
-            "response": response_text,
-            "sources": sources,
-            "session_id": chat_session.id,
-            "reasoning_data": reasoning_data
-        }) + "\n"
+            response_text = final_result_payload["response"]
+            reasoning_data = final_result_payload["reasoning_data"]
+            sources = final_result_payload["sources"]
+            
+            # Extract sources for storage
+            used_sources_meta = []
+            if context_chunks:
+                for chunk in context_chunks:
+                    meta = {
+                        "doc_id": chunk.document_id,
+                        "filename": chunk.document.title if chunk.document else "unknown",
+                        "chunk_id": chunk.id
+                    }
+                    used_sources_meta.append(meta)
+                    
+            # 4. Save History    
+            # User message
+            user_msg = ChatMessage(session_id=chat_session.id, role="user", content=chat_request.query)
+            session.add(user_msg)
+            
+            # AI message
+            ai_msg = ChatMessage(
+                session_id=chat_session.id, 
+                role="ai", 
+                content=response_text,
+                used_sources=used_sources_meta,
+                reasoning_data=reasoning_data
+            )
+            session.add(ai_msg)
+            session.commit()
+            
+            # Yield Final Answer
+            yield json.dumps({
+                "type": "answer",
+                "response": response_text,
+                "sources": sources,
+                "session_id": chat_session.id,
+                "reasoning_data": reasoning_data
+            }) + "\n"
+        except Exception as e:
+            import traceback
+            logger.error(f"Chat endpoint error: {e}")
+            traceback.print_exc()
+            yield json.dumps({"type": "error", "content": f"Server error: {str(e)}"}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
