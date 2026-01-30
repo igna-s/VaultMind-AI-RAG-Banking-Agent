@@ -8,7 +8,7 @@ import os
 logger = logging.getLogger(__name__)
 
 # Get frontend URL from environment or use default
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://salmon-smoke-0937ed810.6.azurestaticapps.net")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://salmon-smoke-0337ed810.6.azurestaticapps.net")
 
 def send_reset_email(to_email: str, token: str):
     """
