@@ -214,7 +214,7 @@ async def login_for_access_token(
             value=access_token,
             httponly=True,
             secure=settings.APP_MODE != "DEV",  # True for HTTPS in PROD
-            samesite="lax",
+            samesite="none" if settings.APP_MODE != "DEV" else "lax",  # 'none' required for cross-origin
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
         
@@ -314,7 +314,7 @@ async def google_login(
             value=access_token,
             httponly=True,
             secure=settings.APP_MODE != "DEV",  # True for HTTPS in PROD
-            samesite="lax",
+            samesite="none" if settings.APP_MODE != "DEV" else "lax",  # 'none' required for cross-origin
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
         
