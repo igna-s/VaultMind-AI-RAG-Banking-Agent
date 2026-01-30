@@ -1,5 +1,4 @@
 name: Deploy Backend
-# Trigger deployment reset
 
 on:
   push:
@@ -21,16 +20,37 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies
+      - name: Create virtual environment and install dependencies
         working-directory: ./backend
         run: |
+          python -m venv antenv
+          source antenv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Zip Backend
+      - name: Create Oryx manifest
+        working-directory: ./backend
+        run: |
+          mkdir -p .oryx
+          cat > oryx-manifest.toml << 'EOF'
+          [build]
+          platform = "python"
+          platformVersion = "3.10"
+          virtualEnvName = "antenv"
+          EOF
+          # Also create the manifest file that Oryx looks for
+          cat > .oryx/manifest.toml << 'EOF'
+          [build]
+          platform = "python"
+          platformVersion = "3.10"
+          virtualEnvName = "antenv"
+          EOF
+
+      - name: Zip Backend with dependencies
         run: |
           cd backend
-          zip -r ../backend_app.zip .
+          # Include everything: app code, requirements, and the virtual environment
+          zip -r ../backend_app.zip . -x "*.pyc" -x "__pycache__/*" -x ".git/*" -x "*.env"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
