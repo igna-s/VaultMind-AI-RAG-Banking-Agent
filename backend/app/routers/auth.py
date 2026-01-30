@@ -207,7 +207,7 @@ async def login_for_access_token(
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=False, # Set to True in PROD with HTTPS
+            secure=settings.APP_MODE != "DEV",  # True for HTTPS in PROD
             samesite="lax",
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
@@ -307,7 +307,7 @@ async def google_login(
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=False,
+            secure=settings.APP_MODE != "DEV",  # True for HTTPS in PROD
             samesite="lax",
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
