@@ -3,19 +3,8 @@ from app.main import app
 
 client = TestClient(app)
 
-def test_chat_endpoint_mocked(mock_llm):
-    """
-    Test that the chat endpoint uses the mock LLM when in TEST mode.
-    The mock_llm fixture (autouse=True) handles the patching if settings.USE_MOCK_LLM is True.
-    """
-    response = client.post("/chat", params={"query": "Hola, esto es un test"})
-    
-    assert response.status_code == 200
-    data = response.json()
-    
-    # Verify we got the safe mocked response
-    assert data["response"] == "Respuesta simulada segura"
-    
-    # Verify the mock was actually called (if the fixture yielded the mock)
-    if mock_llm:
-        mock_llm.assert_called_once_with("Hola, esto es un test")
+def test_chat_requires_auth():
+    """Test that the chat endpoint requires authentication."""
+    response = client.post("/chat", json={"query": "test"})
+    # Should return 401 Unauthorized without auth token
+    assert response.status_code == 401

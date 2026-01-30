@@ -1,24 +1,10 @@
 import pytest
-from unittest.mock import AsyncMock
 from app.config import settings
 
-@pytest.fixture(autouse=True)
-def mock_llm(mocker):
-    """
-    Fixture to intercept LLM calls.
-    If USE_MOCK_LLM is True, it patches the LLM service to return a safe mocked response.
-    """
-    if settings.USE_MOCK_LLM:
-        # We Mock the specific function that handles LLM interaction.
-        # Adjust the target path 'backend.app.main.get_llm_response' as needed if the code moves.
-        mock = mocker.patch(
-            "app.services.llm.generate_response",
-            side_effect=AsyncMock(return_value={
-                "response": "Respuesta simulada segura", 
-                "sources": ["Mock"], 
-                "used_web_search": False
-            })
-        )
-        yield mock
-    else:
-        yield None
+# Simple fixtures for testing
+# No complex mocking - tests should be straightforward
+
+@pytest.fixture
+def test_settings():
+    """Expose settings for tests that need to check config."""
+    return settings

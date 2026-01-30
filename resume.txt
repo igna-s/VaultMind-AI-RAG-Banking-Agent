@@ -1,0 +1,37 @@
+VaultMind AI - RAG Banking Agent
+
+I developed a full-stack AI-powered Retrieval-Augmented Generation (RAG) application designed for banking and financial knowledge management. The system enables precise queries over private documents using LLMs that respond based exclusively on the provided knowledge base and conversation context.
+
+How does the system work?
+
+1. Document Ingestion: Files (PDF, text) are uploaded and chunked for semantic preservation, then vectorized using Voyage AI embeddings (1024 dimensions).
+
+2. Vector Indexing: Embeddings are stored in PostgreSQL with pgvector extension, enabling efficient cosine similarity search across thousands of document chunks.
+
+3. Retrieval & Generation: When a user asks a question, the system retrieves the top-k most relevant chunks via vector search, then sends them to the LLM (Groq/Llama 3) which generates a response grounded exclusively in that context.
+
+4. Deep Research Agent: A LangGraph-based agent with multi-step reasoning capabilities, including web search (Tavily), database queries, and TODO management for complex research tasks.
+
+5. Session Memory: Chat history is persisted in PostgreSQL, enabling coherent multi-turn conversations with full context awareness.
+
+Tech Stack:
+• Backend: FastAPI + Uvicorn/Gunicorn for high-performance async API endpoints
+• Frontend: React 19 + Vite + TailwindCSS with Framer Motion animations
+• Database: PostgreSQL with pgvector for hybrid relational + vector storage
+• AI Orchestration: LangChain + LangGraph for agent workflows
+• Embeddings: Voyage AI (voyage-2 model, 1024 dim)
+• LLM: Groq (Llama 3) for ultra-fast inference
+• Search: Tavily for real-time web research
+• Auth: JWT + bcrypt + Google OAuth with HttpOnly cookies
+• Deployment: Azure App Service (Backend) + Azure Static Web Apps (Frontend)
+
+Security Features Implemented:
+• Bcrypt password hashing with strength validation
+• SQL injection protection via parameterized ORM queries
+• Rate limiting (SlowAPI) on all sensitive endpoints
+• HttpOnly + Secure + SameSite cookies (XSS/CSRF protection)
+• SSL/TLS enforcement for database connections
+• Email enumeration prevention
+• Cryptographically secure token generation (secrets module)
+
+GitHub Repository: https://github.com/your-username/VaultMind-AI

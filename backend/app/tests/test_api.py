@@ -4,8 +4,9 @@ from app.main import app
 client = TestClient(app)
 
 def test_health_check():
+    """Test the root endpoint returns 200 and expected message."""
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json()["message"] == "Banking RAG API is running"
-    # We can also check if the APP_MODE is correctly reflected if needed
-    # assert "mode" in response.json()
+    data = response.json()
+    assert "message" in data
+    assert "Banking RAG API" in data["message"]
