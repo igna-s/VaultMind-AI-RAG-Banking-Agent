@@ -77,46 +77,52 @@ async def register(
     background_tasks: BackgroundTasks,
     session: Session = Depends(get_session)
 ):
-    # Validate password
-    if not validate_password_strength(user_data.password):
-        raise HTTPException(
-            status_code=400, 
-            detail="La contraseña debe tener al menos 10 caracteres, una mayúscula, una minúscula, un número y un carácter especial."
+    try:
+        # Validate password
+        if not validate_password_strength(user_data.password):
+            raise HTTPException(
+                status_code=400, 
+                detail="La contraseña debe tener al menos 10 caracteres, una mayúscula, una minúscula, un número y un carácter especial."
+            )
+
+        # Check existing
+        existing_user = session.exec(select(User).where(User.email == user_data.email)).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Generate verification code (Secure Random)
+        verification_code = ''.join(secrets.choice(string.digits) for _ in range(6))
+        
+        # Create user
+        new_user = User(
+            email=user_data.email,
+            hashed_password=get_password_hash(user_data.password),
+            status="active",
+            role="user",
+            is_verified=False,
+            verification_code=verification_code
         )
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+        
+        # Assign default Knowledge Bases
+        default_kbs = session.exec(select(KnowledgeBase).where(KnowledgeBase.is_default == True)).all()
+        for kb in default_kbs:
+            link = UserKnowledgeBaseLink(user_id=new_user.id, knowledge_base_id=kb.id)
+            session.add(link)
+        session.commit()
 
-    # Check existing
-    existing_user = session.exec(select(User).where(User.email == user_data.email)).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Generate verification code
-    # Generate verification code (Secure Random)
-    verification_code = ''.join(secrets.choice(string.digits) for _ in range(6))
-    
-    # Create user
-    new_user = User(
-        email=user_data.email,
-        hashed_password=get_password_hash(user_data.password),
-        status="active",
-        role="user",
-        is_verified=False,
-        verification_code=verification_code
-    )
-    session.add(new_user)
-    session.commit()
-    session.refresh(new_user)
-    
-    # Assign default Knowledge Bases
-    default_kbs = session.exec(select(KnowledgeBase).where(KnowledgeBase.is_default == True)).all()
-    for kb in default_kbs:
-        link = UserKnowledgeBaseLink(user_id=new_user.id, knowledge_base_id=kb.id)
-        session.add(link)
-    session.commit()
+        # Send verification email in background
+        background_tasks.add_task(send_verification_email, new_user.email, verification_code)
 
-    # Send verification email in background
-    background_tasks.add_task(send_verification_email, new_user.email, verification_code)
-
-    return {"message": "Registro exitoso. Revisa tu email para el código de verificación.", "email": new_user.email}
+        return {"message": "Registro exitoso. Revisa tu email para el código de verificación.", "email": new_user.email}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Registration error: {str(e)}")
 
 @router.post("/verify-email")
 async def verify_email(
