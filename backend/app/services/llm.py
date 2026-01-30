@@ -70,12 +70,12 @@ def perform_web_search(query: str, max_results: int = 3) -> str:
         logger.error(f"Tavily search failed: {e}")
         return f"Search failed: {str(e)}"
 
-# Initialize LLM WITHOUT tools binding - gpt-oss has issues with native function calling
-# We'll use JSON-based tool calling in the prompt instead
+# Initialize LLM WITHOUT tools binding - using JSON-based tool calling in the prompt
+# Changed from gpt-oss-120b (forces tool_choice) to llama-3.3 which works with JSON prompts
 if GROQ_API_KEY:
     llm = ChatGroq(
-        temperature=0,
-        model_name="openai/gpt-oss-120b",
+        temperature=0.1,  # Slight temperature for more natural responses
+        model_name="llama-3.3-70b-versatile",
         api_key=GROQ_API_KEY
     )
 else:
