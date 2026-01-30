@@ -1,26 +1,15 @@
 #!/bin/bash
 
 # Azure App Service startup script for Python FastAPI
+# Dependencies are pre-packaged in site-packages/ directory
 
-# Navigate to the app directory
 cd /home/site/wwwroot
 
-# Create virtual environment if it doesn't exist
-if [ ! -d "antenv" ]; then
-    echo "Creating virtual environment..."
-    python -m venv antenv
-fi
+# Add site-packages to PYTHONPATH
+export PYTHONPATH="/home/site/wwwroot/site-packages:$PYTHONPATH"
 
-# Activate virtual environment
-source antenv/bin/activate
-
-# Upgrade pip
-pip install --upgrade pip
-
-# Install dependencies
-echo "Installing dependencies from requirements.txt..."
-pip install -r requirements.txt
-
-# Start the application with Gunicorn + Uvicorn workers
 echo "Starting Gunicorn with Uvicorn workers..."
+echo "PYTHONPATH: $PYTHONPATH"
+
+# Start the application
 exec gunicorn --bind=0.0.0.0:8000 --workers=2 -k uvicorn.workers.UvicornWorker app.main:app
