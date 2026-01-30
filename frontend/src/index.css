@@ -81,3 +81,86 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+/* Safe area for devices with notches (iPhone X+) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Mobile-first adjustments */
+@media (max-width: 768px) {
+  /* Reduce padding on mobile */
+  .glass-panel {
+    border-radius: 16px;
+  }
+  
+  /* Better touch targets */
+  button, a, input, textarea {
+    min-height: 44px;
+  }
+  
+  /* Prevent horizontal overflow */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Mobile typography scaling */
+  h1 {
+    font-size: 1.75rem !important;
+  }
+  
+  h2 {
+    font-size: 1.5rem !important;
+  }
+  
+  /* Mobile input improvements */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+}
+
+/* Small mobile adjustments */
+@media (max-width: 380px) {
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .glass-panel {
+    border-radius: 12px;
+  }
+}
+
+/* Landscape mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  body {
+    min-height: 100svh; /* Use small viewport height for mobile */
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover states that don't work well on touch */
+  .glass-button:hover::before {
+    opacity: 0;
+  }
+  
+  /* Active states for touch feedback */
+  .glass-button:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+  
+  button:active {
+    transform: scale(0.97);
+  }
+}
+

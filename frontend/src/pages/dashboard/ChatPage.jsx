@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, Bot, User as UserIcon, Loader2, Paperclip, Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { Send, Bot, User as UserIcon, Loader2, Paperclip, Plus, MessageSquare, Trash2, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -76,6 +76,7 @@ export default function ChatPage() {
     const [activeSession, setActiveSession] = useState(null);
     const [showUploader, setShowUploader] = useState(false);
     const [loadingHistory, setLoadingHistory] = useState(false);
+    const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
     const scrollRef = useRef(null);
     const { user } = useAuth();
@@ -245,8 +246,20 @@ export default function ChatPage() {
     };
 
     return (
-        <div className="flex h-full bg-[#0f0e17] text-white overflow-hidden rounded-2xl border border-white/5">
-            <div className="w-64 border-r border-white/5 bg-[#161420] flex flex-col hidden md:flex">
+        <div className="flex h-full bg-[#0f0e17] text-white overflow-hidden rounded-2xl md:rounded-2xl rounded-none border border-white/5">
+            {/* Mobile Sidebar Overlay */}
+            {showMobileSidebar && (
+                <div
+                    className="fixed inset-0 bg-black/60 z-40 md:hidden"
+                    onClick={() => setShowMobileSidebar(false)}
+                />
+            )}
+
+            {/* Sidebar - hidden on mobile unless toggled */}
+            <div className={`w-64 border-r border-white/5 bg-[#161420] flex flex-col
+                fixed md:relative inset-y-0 left-0 z-50
+                transform transition-transform duration-300 ease-in-out
+                ${showMobileSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 <div className="p-4 border-b border-white/5">
                     <button
                         onClick={handleNewChat}
@@ -280,13 +293,27 @@ export default function ChatPage() {
                         ))
                     )}
                 </div>
+                {/* Mobile close button */}
+                <button
+                    onClick={() => setShowMobileSidebar(false)}
+                    className="md:hidden absolute top-4 right-4 p-2 text-white/60 hover:text-white"
+                >
+                    <X className="w-5 h-5" />
+                </button>
             </div>
 
             <div className="flex-1 flex flex-col relative">
-                <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-[#161420]/50 backdrop-blur-sm">
-                    <div className="flex items-center gap-3">
+                <div className="h-14 md:h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-[#161420]/50 backdrop-blur-sm safe-bottom">
+                    <div className="flex items-center gap-2 md:gap-3">
+                        {/* Mobile menu button */}
+                        <button
+                            onClick={() => setShowMobileSidebar(true)}
+                            className="md:hidden p-2 -ml-2 text-white/60 hover:text-white"
+                        >
+                            <Menu className="w-5 h-5" />
+                        </button>
                         <Bot className="w-5 h-5 text-indigo-400" />
-                        <span className="font-semibold">VaultMind AI</span>
+                        <span className="font-semibold text-sm md:text-base">VaultMind AI</span>
                     </div>
                     <button
                         onClick={() => setShowUploader(!showUploader)}
@@ -297,7 +324,7 @@ export default function ChatPage() {
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-6" ref={scrollRef}>
+                <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-4 md:space-y-6" ref={scrollRef}>
                     {messages.length === 0 && !loadingHistory ? (
                         <div className="h-full flex flex-col items-center justify-center text-white/30 space-y-4">
                             <Bot className="w-12 h-12 opacity-20" />
@@ -316,7 +343,7 @@ export default function ChatPage() {
                                     {msg.sender === 'ai' ? <Bot className="w-5 h-5 text-indigo-400" /> : <UserIcon className="w-5 h-5 text-white/70" />}
                                 </div>
 
-                                <div className={`max-w-[70%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm
+                                <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl p-3 md:p-4 text-sm leading-relaxed shadow-sm
                                     ${msg.sender === 'ai'
                                         ? 'bg-[#1e1c29] border border-white/5 text-white/90 rounded-tl-none'
                                         : 'bg-indigo-600 text-white rounded-tr-none'
@@ -362,7 +389,7 @@ export default function ChatPage() {
                     {/* Removed duplicate typing indicator - already shown in message status */}
                 </div>
 
-                <div className="p-4 border-t border-white/5 bg-[#161420]">
+                <div className="p-3 md:p-4 border-t border-white/5 bg-[#161420] safe-bottom">
                     <div className="max-w-4xl mx-auto relative">
                         <form onSubmit={handleSend} className="relative">
                             <input
@@ -370,7 +397,7 @@ export default function ChatPage() {
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder="Message VaultMind AI..."
-                                className="w-full bg-[#0f0e17] border border-white/10 rounded-xl pl-5 pr-14 py-4 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-indigo-500/50 transition-all shadow-inner"
+                                className="w-full bg-[#0f0e17] border border-white/10 rounded-xl pl-4 md:pl-5 pr-12 md:pr-14 py-3 md:py-4 text-base md:text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-indigo-500/50 transition-all shadow-inner"
                             />
                             <button
                                 type="submit"
