@@ -297,8 +297,26 @@ Respond in the user's language."""
             # If we acted (search/plan), loop continues. 
             
         except Exception as e:
+            error_str = str(e)
+            # Handle Groq's tool_choice error - retry without expecting tool call
+            if "tool_use_failed" in error_str or "Tool choice is none" in error_str:
+                logger.warning(f"Tool choice error, retrying with direct answer prompt: {e}")
+                add_step("Retrying with direct response...", "retry")
+                try:
+                    # Add instruction to answer directly
+                    messages.append(HumanMessage(content="Please answer directly as plain text, do not use any tools or JSON formatting. Just provide your answer."))
+                    record_api_call()
+                    response = await llm.ainvoke(messages)
+                    content = response.content.strip() if response.content else ""
+                    if content:
+                        final_response = content
+                        add_step("Generated direct response", "answer")
+                        break
+                except Exception as retry_e:
+                    logger.error(f"Retry also failed: {retry_e}")
+            
             logger.error(f"Error in agent loop: {e}")
-            add_step(f"Error: {str(e)}", "error")
+            add_step(f"Error: {str(e)[:100]}", "error")
             break
 
     if not final_response:
