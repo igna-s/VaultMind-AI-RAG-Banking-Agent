@@ -20,4 +20,4 @@ echo "Starting Gunicorn with Uvicorn workers..."
 echo "PYTHONPATH: $PYTHONPATH"
 
 # Start the application
-exec gunicorn --bind=0.0.0.0:8000 --workers=2 --timeout=120 -k uvicorn.workers.UvicornWorker app.main:app
+exec gunicorn --bind=0.0.0.0:8000 --workers=2 --timeout=1200 -k uvicorn.workers.UvicornWorker app.main:app

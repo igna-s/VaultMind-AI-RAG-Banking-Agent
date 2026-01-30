@@ -20,18 +20,11 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies locally
-        working-directory: ./backend
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt --target=./site-packages
-          echo "Installed packages:"
-          ls -la site-packages/ | head -20
-
-      - name: Zip Backend with dependencies
+      - name: Zip Backend (Oryx will install deps)
         run: |
           cd backend
-          # Package source + site-packages (pre-installed deps)
+          # Package source code only - Azure Oryx will pip install from requirements.txt
+          # This avoids GLIBC incompatibility from pre-compiled binaries
           zip -r ../backend_app.zip . \
             -x "*.pyc" \
             -x "*/__pycache__/*" \
@@ -39,6 +32,7 @@ jobs:
             -x "*.env" \
             -x "antenv/*" \
             -x "venv/*" \
+            -x "site-packages/*" \
             -x "tests/*" \
             -x "*.md"
           echo "Final zip size:"
