@@ -407,11 +407,11 @@ This project implements multiple layers of security (verified from codebase):
 │                           ▼                                     │
 │  ┌────────────────────────────────────────────────────┐         │
 │  │          LangGraph Deep Research Agent             │         │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────────────┐    │          │
-│  │  │ Web     │  │ DB      │  │ Knowledge Base  │    │          │
-│  │  │ Search  │  │ Query   │  │ RAG Retrieval   │    │          │
-│  │  │(Tavily) │  │         │  │ (Voyage AI)     │    │          │
-│  │  └─────────┘  └─────────┘  └─────────────────┘    │          │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────────────┐     │         │
+│  │  │ Web     │  │ DB      │  │ Knowledge Base  │     │         │
+│  │  │ Search  │  │ Query   │  │ RAG Retrieval   │     │         │
+│  │  │(Tavily) │  │         │  │ (Voyage AI)     │     │         │
+│  │  └─────────┘  └─────────┘  └─────────────────┘     │         │
 │  └────────────────────────────────────────────────────┘         │
 └─────────────────────────┬───────────────────────────────────────┘
                           │ SSL/TLS
