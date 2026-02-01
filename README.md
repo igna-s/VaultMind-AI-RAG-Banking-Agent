@@ -83,11 +83,24 @@ TheDefinitiveProyect/
 
 ---
 
+
+### Test Users
+
+If you want to try the app, you can use the following test accounts:
+
+- **Email:** admin@bank.com (Admin)  
+  **Password:** Admin123!
+
+- **Email:** hua@gmail.com  
+  **Password:** Admin123!
+
+---
+
 ## ☁️ Deployment
 
 This project is configured to be deployed on **Azure Free Tier**:
 
-- **Frontend** – [Azure Static Web Apps (F1 Plan)](https://salmon-smoke-0937ed810.6.azurestaticapps.net)
+- **Frontend** – [Azure Static Web Apps (F1 Plan)](https://salmon-smoke-0337ed810.6.azurestaticapps.net/)
 - **Backend** – [Azure App Service (Free Plan)](https://banking-rag-auth-api.azurewebsites.net)
 - **Database** – Azure Database for PostgreSQL (with pgvector extension)
 
@@ -375,43 +388,43 @@ This project implements multiple layers of security (verified from codebase):
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         FRONTEND                                 │
+│                         FRONTEND                                │
 │    React + Vite + TailwindCSS + Framer Motion                   │
-│    (Azure Static Web Apps)                                       │
+│    (Azure Static Web Apps)                                      │
 └─────────────────────────┬───────────────────────────────────────┘
                           │ HTTPS (REST API)
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                         BACKEND                                  │
+│                         BACKEND                                 │
 │    FastAPI + SQLModel + LangGraph                               │
 │    (Azure App Service)                                          │
 │                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │   Auth API   │  │   Chat API   │  │  Admin API   │          │
-│  │  (JWT/OAuth) │  │   (RAG)      │  │  (CRUD)      │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │   Auth API   │  │   Chat API   │  │  Admin API   │           │
+│  │  (JWT/OAuth) │  │   (RAG)      │  │  (CRUD)      │           │
+│  └──────────────┘  └──────────────┘  └──────────────┘           │
 │                           │                                     │
 │                           ▼                                     │
-│  ┌────────────────────────────────────────────────────┐        │
-│  │          LangGraph Deep Research Agent             │        │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────────────┐    │        │
-│  │  │ Web     │  │ DB      │  │ Knowledge Base  │    │        │
-│  │  │ Search  │  │ Query   │  │ RAG Retrieval   │    │        │
-│  │  │(Tavily) │  │         │  │ (Voyage AI)     │    │        │
-│  │  └─────────┘  └─────────┘  └─────────────────┘    │        │
-│  └────────────────────────────────────────────────────┘        │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │          LangGraph Deep Research Agent             │         │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────────────┐    │          │
+│  │  │ Web     │  │ DB      │  │ Knowledge Base  │    │          │
+│  │  │ Search  │  │ Query   │  │ RAG Retrieval   │    │          │
+│  │  │(Tavily) │  │         │  │ (Voyage AI)     │    │          │
+│  │  └─────────┘  └─────────┘  └─────────────────┘    │          │
+│  └────────────────────────────────────────────────────┘         │
 └─────────────────────────┬───────────────────────────────────────┘
                           │ SSL/TLS
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                        DATABASE                                  │
+│                        DATABASE                                 │
 │    PostgreSQL + pgvector                                        │
 │    (Azure Database for PostgreSQL)                              │
 │                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │    Users     │  │  Documents   │  │ Chat History │          │
-│  │  & Sessions  │  │  & Chunks    │  │  & Messages  │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │    Users     │  │  Documents   │  │ Chat History │           │
+│  │  & Sessions  │  │  & Chunks    │  │  & Messages  │           │
+│  └──────────────┘  └──────────────┘  └──────────────┘           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
