@@ -42,6 +42,7 @@ This project is a **full-stack AI-powered RAG (Retrieval-Augmented Generation) a
 ![Lucide](https://img.shields.io/badge/Lucide_Icons-F56565?style=for-the-badge&logoColor=white)
 
 ### ☁️ Cloud / Deployment
+![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Azure App Service](https://img.shields.io/badge/Azure%20App%20Service-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
 ![Azure Static Web Apps](https://img.shields.io/badge/Azure%20Static%20Web%20Apps-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
@@ -349,6 +350,12 @@ This project implements multiple layers of security (verified from codebase):
 ### 11. Email Verification
 - **Flow**: Código de 6 dígitos enviado por email antes de permitir login
 - **Blocking**: Usuarios no verificados con código pendiente no pueden hacer login (líneas 199-203)
+
+### 12. Edge Security (Cloudflare)
+- **DDoS Protection**: Traffic proxying via Cloudflare network.
+- **SSL/TLS**: Managed certificates and strict SSL enforcement.
+- **DNS Management**: Fast propagation and secure DNS handling.
+
 
 👉 **[Read the Production Readiness Guide](docs/production_readiness.md)** for detailed security recommendations.
 
