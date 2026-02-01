@@ -34,4 +34,4 @@ Security Features Implemented:
 • Email enumeration prevention
 • Cryptographically secure token generation (secrets module)
 
-GitHub Repository: https://github.com/your-username/VaultMind-AI
+GitHub Repository: https://github.com/igna-s/VaultMind-AI-RAG-Banking-Agent
