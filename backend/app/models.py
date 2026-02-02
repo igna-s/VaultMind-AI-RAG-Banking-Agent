@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from sqlmodel import Field, SQLModel, Relationship, Column
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import ARRAY, Float, JSON
+from sqlalchemy import ARRAY, Float, JSON, Text
 
 # --- Associations ---
 class UserKnowledgeBaseLink(SQLModel, table=True):
@@ -117,4 +117,28 @@ class TokenUsage(SQLModel, table=True):
     hour: datetime = Field(index=True)  # Truncated to hour 
     source: str  # 'retriever' or 'groq'
     tokens: int = Field(default=0)
+    user_id: Optional[int] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class UserLog(SQLModel, table=True):
+    __tablename__ = "user_logs"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id")
+    event: str # 'LOGIN', 'LOGOUT', 'TOKEN_USAGE', 'ERROR'
+    details: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))
+    ip_address: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    user: User = Relationship()
+
+class ErrorLog(SQLModel, table=True):
+    __tablename__ = "error_logs"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    path: Optional[str] = None
+    method: Optional[str] = None
+    error_message: str
+    stack_trace: Optional[str] = Field(default=None, sa_column=Column(Text))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    user: Optional[User] = Relationship()

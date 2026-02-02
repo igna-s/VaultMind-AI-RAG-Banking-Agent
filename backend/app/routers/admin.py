@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlmodel import Session, select
 from pydantic import BaseModel
 from app.database import get_session
-from app.models import User, KnowledgeBase, Document, UserKnowledgeBaseLink, DocumentChunk
+from app.models import User, KnowledgeBase, Document, UserKnowledgeBaseLink, DocumentChunk, UserLog, ErrorLog, TokenUsage
 from app.auth import get_current_user
 from app.services.rag import get_embedding
 import logging
@@ -229,4 +229,76 @@ def list_kb_documents(
     admin: User = Depends(get_admin_user)
 ):
     docs = session.exec(select(Document).where(Document.knowledge_base_id == kb_id)).all()
-    return docs
+    return [
+        {
+            "id": doc.id,
+            "title": doc.title,
+            "type": doc.type,
+            "created_at": doc.created_at
+        }
+        for doc in docs
+    ]
+
+# --- System Logs ---
+
+@router.get("/logs/users")
+def get_user_layouts(
+    limit: int = 100,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user)
+):
+    """
+    Get user logs including logins and token usage stats.
+    We'll return a raw list of UserLog entries, plus we can augment or expect frontend to aggregate.
+    Actually, let's just return the raw UserLogs for now.
+    """
+    logs = session.exec(select(UserLog).order_by(UserLog.created_at.desc()).limit(limit)).all()
+    
+    # Enrich with user email
+    # A bit inefficient 1+N but okay for admin panel with small limits
+    results = []
+    for log in logs:
+        user_email = log.user.email if log.user else "Unknown/Deleted"
+        results.append({
+            "id": log.id,
+            "user_email": user_email,
+            "event": log.event,
+            "details": log.details,
+            "ip_address": log.ip_address,
+            "created_at": log.created_at
+        })
+
+    # Also fetch recent Token Usage logs to mix in? 
+    # Or keep them separate. The request asked for "users and their token consumption". 
+    # Let's fetch TokenUsage rows too and format them similarly as "events".
+    
+    token_usages = session.exec(select(TokenUsage).order_by(TokenUsage.created_at.desc()).limit(limit)).all()
+    for usage in token_usages:
+        # manual join
+        user = session.get(User, usage.user_id) if usage.user_id else None
+        user_email = user.email if user else "System/Unknown"
+        
+        results.append({
+            "id": f"tok_{usage.id}",
+            "user_email": user_email,
+            "event": "TOKEN_USAGE",
+            "details": {"source": usage.source, "tokens": usage.tokens},
+            "ip_address": None,
+            "created_at": usage.created_at
+        })
+        
+    # Sort combined by date desc
+    results.sort(key=lambda x: x["created_at"], reverse=True)
+    return results[:limit]
+
+@router.get("/logs/errors")
+def get_error_logs(
+    limit: int = 100,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user)
+):
+    """
+    Get system error logs.
+    """
+    errors = session.exec(select(ErrorLog).order_by(ErrorLog.created_at.desc()).limit(limit)).all()
+    return errors

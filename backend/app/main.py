@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 from sqlmodel import Session, select
 from app.database import init_db, get_session, engine
-from app.models import User, ChatSession, ChatMessage, Document, DocumentChunk, Folder
+from app.models import User, ChatSession, ChatMessage, Document, DocumentChunk, Folder, ErrorLog
 from app.config import settings
 from app.services.rag import rag_pipeline, get_embedding
 from app.routers.auth import router as auth_router
@@ -72,6 +72,27 @@ async def global_exception_handler(request: Request, exc: Exception):
     # traceback.print_exc() # Optional: keep or remove depending on logger config. Let's keep it but via logger usually better.
     # For now just cleaning `print`.
     traceback.print_exc()
+    
+    # Save ErrorLog
+    try:
+        user_id = None
+        # Try to get user from request state if available (custom middleware might set it)
+        # Or simple heuristic if we had auth middleware covering everything. 
+        # Since Depends(get_current_user) runs in router, we might not have it here easily for all crashes.
+        # But we can capture path/method.
+        
+        with Session(engine) as session:
+            error_log = ErrorLog(
+                path=str(request.url),
+                method=request.method,
+                error_message=str(exc),
+                stack_trace=traceback.format_exc()
+            )
+            session.add(error_log)
+            session.commit()
+    except Exception as db_e:
+        logger.error(f"Failed to save ErrorLog: {db_e}")
+
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal Server Error", "error": str(exc)},
@@ -173,7 +194,7 @@ async def chat_endpoint(
             
             final_result_payload = None
             
-            async for event in generate_response_stream(chat_request.query, context_chunks, history):
+            async for event in generate_response_stream(chat_request.query, context_chunks, history, user_id=user.id):
                 if event["type"] == "status":
                     yield json.dumps(event) + "\n"
                 elif event["type"] == "answer" or event["type"] == "result":

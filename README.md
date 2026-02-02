@@ -42,6 +42,7 @@ This project is a **full-stack AI-powered RAG (Retrieval-Augmented Generation) a
 ![Lucide](https://img.shields.io/badge/Lucide_Icons-F56565?style=for-the-badge&logoColor=white)
 
 ### ☁️ Cloud / Deployment
+![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Azure App Service](https://img.shields.io/badge/Azure%20App%20Service-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
 ![Azure Static Web Apps](https://img.shields.io/badge/Azure%20Static%20Web%20Apps-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
@@ -104,9 +105,6 @@ This project is configured to be deployed on **Azure Free Tier**:
 - **Backend** – [Azure App Service (Free Plan)](https://banking-rag-auth-api.azurewebsites.net)
 - **Database** – Azure Database for PostgreSQL (with pgvector extension)
 
-👉 **[Read the Deployment Guide](docs/AZURE_DEPLOY_GUIDE.md)** for step-by-step instructions.
-
-👉 **[See the Setup Guide](docs/SETUP.md)** for complete installation and replication instructions.
 
 ---
 
@@ -191,17 +189,6 @@ npm run dev
 ```
 
 The frontend will be available at `http://localhost:5173`.
-
-### 🌍 Local vs Cloud Execution
-
-The project uses **Environment Variables** to automatically switch the Backend URL:
-
-| Environment | Config File | API URL |
-|-------------|-------------|---------|
-| **Local** | `.env.development` | `http://localhost:8000` |
-| **Production** | `.env.production` | `https://banking-rag-auth-api.azurewebsites.net` |
-
-You don't need to change any code. Just run `npm run dev` for local development, or `npm run build` for production deployment.
 
 ---
 
@@ -350,9 +337,11 @@ This project implements multiple layers of security (verified from codebase):
 - **Flow**: Código de 6 dígitos enviado por email antes de permitir login
 - **Blocking**: Usuarios no verificados con código pendiente no pueden hacer login (líneas 199-203)
 
-👉 **[Read the Production Readiness Guide](docs/production_readiness.md)** for detailed security recommendations.
+### 12. Edge Security (Cloudflare)
+- **DDoS Protection**: Traffic proxying via Cloudflare network.
+- **SSL/TLS**: Managed certificates and strict SSL enforcement.
+- **DNS Management**: Fast propagation and secure DNS handling.
 
-👉 **[See the Security Walkthrough](docs/walkthrough.md)** for implementation details and test results.
 
 ---
 
@@ -378,9 +367,7 @@ This project implements multiple layers of security (verified from codebase):
 | Guide | Description |
 |-------|-------------|
 | [Setup Guide](docs/SETUP.md) | Complete installation and deployment instructions |
-| [Azure Deploy Guide](docs/AZURE_DEPLOY_GUIDE.md) | Azure-specific configuration (App Service, Static Web Apps) |
 | [Security Map](docs/SECURITY_MAP.md) | Environment variables for all environments |
-| [Versions](docs/VERSIONS.md) | Exact library versions for reproducibility |
 
 ---
 
@@ -427,20 +414,6 @@ This project implements multiple layers of security (verified from codebase):
 │  └──────────────┘  └──────────────┘  └──────────────┘           │
 └─────────────────────────────────────────────────────────────────┘
 ```
-
----
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Setup Guide](docs/SETUP.md) | Installation and local development |
-| [Azure Deploy Guide](docs/AZURE_DEPLOY_GUIDE.md) | Cloud deployment instructions |
-| [Production Readiness](docs/production_readiness.md) | Security measures and production checklist |
-| [Security Walkthrough](docs/walkthrough.md) | Implementation details of security features |
-| [Security Map](docs/SECURITY_MAP.md) | Environment variables across environments |
-| [Project Roadmap](docs/project_roadmap.md) | Future development plans |
-| [Versions](docs/VERSIONS.md) | Exact library versions |
 
 ---
 

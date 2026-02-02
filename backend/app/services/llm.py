@@ -92,7 +92,7 @@ def load_prompt(filename: str) -> str:
         logger.error(f"Failed to load prompt {filename}: {e}")
         return ""
 
-def record_token_usage(source: str, tokens: int):
+def record_token_usage(source: str, tokens: int, user_id: int = None):
     """Record token usage to database for analytics."""
     from sqlmodel import Session
     from app.database import engine
@@ -105,14 +105,15 @@ def record_token_usage(source: str, tokens: int):
             usage = TokenUsage(
                 hour=current_hour,
                 source=source,
-                tokens=tokens
+                tokens=tokens,
+                user_id=user_id
             )
             session.add(usage)
             session.commit()
     except Exception as e:
         logger.error(f"Failed to record token usage: {e}")
 
-async def generate_response_stream(query: str, context_chunks: list = None, history: list = None):
+async def generate_response_stream(query: str, context_chunks: list = None, history: list = None, user_id: int = None):
     """
     Async Generator that yields agent steps and final response.
     Uses JSON-based tool calling (not native function calling) for compatibility with gpt-oss.
@@ -132,7 +133,7 @@ async def generate_response_stream(query: str, context_chunks: list = None, hist
         except Exception as e:
             logger.error(f"[LLM] Error preparing context: {e}")
             sources = ["Internal Documents"]
-        record_token_usage("retriever", len(context_text) // 4)
+        record_token_usage("retriever", len(context_text) // 4, user_id=user_id)
     else:
         logger.info("[LLM] No context chunks provided")
 
@@ -181,7 +182,7 @@ Just write your answer in clean markdown. Use headers, lists, bold for structure
 
 ---
 
-## EXAMPLE: Multi-Question with DB + Web
+## EXAMPLE: Multi-Question with DB + Web (SPANISH)
 
 **User**: "¿Qué documentos tengo en la base, quién es el presidente de Argentina, y cuánto vale Bitcoin?"
 
@@ -206,6 +207,41 @@ Según mi búsqueda, el presidente actual es [nombre] (fuente: [url])
 ### 3. Precio de Bitcoin
 El precio actual de Bitcoin es $XX,XXX USD (fuente: [url])
 
+
+
+---
+
+## EXAMPLE 2: English (Multi-Question)
+
+**User**: "Who is the president of France and what is the capital of Australia?"
+
+**Step 1** (Plan):
+{"thought": "2 questions: 1) President of France (search needed), 2) Capital of Australia (static knowledge but better to confirm)", "todo": ["[ ] Search president of France", "[ ] Search capital of Australia"], "action": "plan"}
+
+**Step 2** (Search):
+{"thought": "Searching for current French president", "action": "search", "query": "current president of France 2026"}
+
+**Step 3** (Final Answer):
+## Response
+
+### 1. President of France
+The current president of France is [Name] (Source: [url]).
+
+### 2. Capital of Australia
+The capital of Australia is Canberra.
+
+
+---
+
+## 🌐 LANGUAGE RULE (CRITICAL!)
+**MATCH THE USER'S LANGUAGE EXACTLY:**
+- If user writes in English → Answer in English
+- If user writes in Spanish → Answer in Spanish  
+- If user writes in French → Answer in French
+- etc.
+
+Never default to Spanish. Always mirror the exact language the user uses in their message.
+
 ---
 
 ## ❌ WRONG BEHAVIORS (never do this)
@@ -213,11 +249,12 @@ El precio actual de Bitcoin es $XX,XXX USD (fuente: [url])
 - Giving a BTC price from memory (prices change every second!)
 - Answering multi-questions in 1 step without planning
 - Showing JSON in the final answer
+- Answering in Spanish when user wrote in English (ALWAYS MATCH USER'S LANGUAGE!)
 
 ---
 
 ## OUTPUT FORMAT
-- Respond in the USER'S LANGUAGE (Spanish → Spanish)
+- **RESPOND IN THE SAME LANGUAGE THE USER USED** (English → English, Spanish → Spanish)
 - Final answer = clean Markdown (headers, lists, bold)
 - Include sources when you searched the web
 - Never show raw JSON to the user
@@ -289,7 +326,7 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             # Record usage
             usage = getattr(response, 'response_metadata', {}).get('usage', {})
             if usage.get('total_tokens', 0) > 0:
-                record_token_usage("groq", usage['total_tokens'])
+                record_token_usage("groq", usage['total_tokens'], user_id=user_id)
             
             content = response.content.strip() if response.content else ""
             logger.info(f"[LLM] Response content length: {len(content)}")
@@ -414,9 +451,7 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             
             logger.error(f"Error in agent loop: {e}")
             add_step(f"Error: {str(e)[:100]}", "error")
-            # Yield the error to the frontend
-            yield {"type": "error", "content": f"LLM Error: {str(e)[:200]}"}
-            return
+            break
 
     if not final_response:
          # Check if we have a partial answer in the last JSON

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Backgrou
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from app.database import get_session
-from app.models import User, KnowledgeBase, UserKnowledgeBaseLink
+from app.models import User, KnowledgeBase, UserKnowledgeBaseLink, UserLog
 from app.auth import (
     authenticate_user, 
     create_access_token, 
@@ -218,6 +218,16 @@ async def login_for_access_token(
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
         
+        # Log successful login
+        log = UserLog(
+            user_id=user.id,
+            event="LOGIN",
+            details={},
+            ip_address=request.client.host if request.client else None
+        )
+        session.add(log)
+        session.commit()
+
         return {
             "access_token": access_token, 
             "token_type": "bearer",
@@ -318,6 +328,16 @@ async def google_login(
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
         
+        # Log successful login
+        log = UserLog(
+            user_id=user.id,
+            event="LOGIN",
+            details={"method": "google"},
+            ip_address=request.client.host if request.client else None
+        )
+        session.add(log)
+        session.commit()
+
         return {
             "access_token": access_token, 
             "token_type": "bearer",
