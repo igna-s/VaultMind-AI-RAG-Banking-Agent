@@ -117,17 +117,24 @@ async def generate_response_stream(query: str, context_chunks: list = None, hist
     Async Generator that yields agent steps and final response.
     Uses JSON-based tool calling (not native function calling) for compatibility with gpt-oss.
     """
+    logger.info(f"[LLM] Starting generate_response_stream with query: {query[:50]}...")
+    
     context_text = ""
     sources = []
     
     # 1. Prepare Context from RAG
     if context_chunks:
-        context_text = "\n\n".join([c.content for c in context_chunks])
+        logger.info(f"[LLM] Processing {len(context_chunks)} context chunks")
         try:
+            context_text = "\n\n".join([c.content for c in context_chunks])
             sources = [c.document.title if c.document else "Internal Doc" for c in context_chunks]
-        except:
+            logger.info(f"[LLM] Context prepared: {len(context_text)} chars")
+        except Exception as e:
+            logger.error(f"[LLM] Error preparing context: {e}")
             sources = ["Internal Documents"]
         record_token_usage("retriever", len(context_text) // 4)
+    else:
+        logger.info("[LLM] No context chunks provided")
 
     # 2. Build system prompt
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
@@ -275,7 +282,9 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
         try:
             record_api_call()
             # Call the model
+            logger.info(f"[LLM] Iteration {iteration+1}: Calling Groq API...")
             response = await llm.ainvoke(messages)
+            logger.info(f"[LLM] Iteration {iteration+1}: Got response from Groq")
             
             # Record usage
             usage = getattr(response, 'response_metadata', {}).get('usage', {})
@@ -283,6 +292,7 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
                 record_token_usage("groq", usage['total_tokens'])
             
             content = response.content.strip() if response.content else ""
+            logger.info(f"[LLM] Response content length: {len(content)}")
             
             if not content:
                 # Retry once
@@ -383,6 +393,8 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             
         except Exception as e:
             error_str = str(e)
+            logger.error(f"[LLM] Exception in agent loop: {error_str}")
+            
             # Handle Groq's tool_choice error - retry without expecting tool call
             if "tool_use_failed" in error_str or "Tool choice is none" in error_str:
                 logger.warning(f"Tool choice error, retrying with direct answer prompt: {e}")
@@ -402,7 +414,9 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             
             logger.error(f"Error in agent loop: {e}")
             add_step(f"Error: {str(e)[:100]}", "error")
-            break
+            # Yield the error to the frontend
+            yield {"type": "error", "content": f"LLM Error: {str(e)[:200]}"}
+            return
 
     if not final_response:
          # Check if we have a partial answer in the last JSON
