@@ -174,7 +174,7 @@ Just write your answer in clean markdown. Use headers, lists, bold for structure
 
 ---
 
-## EXAMPLE: Multi-Question with DB + Web
+## EXAMPLE: Multi-Question with DB + Web (SPANISH)
 
 **User**: "¿Qué documentos tengo en la base, quién es el presidente de Argentina, y cuánto vale Bitcoin?"
 
@@ -199,6 +199,33 @@ Según mi búsqueda, el presidente actual es [nombre] (fuente: [url])
 ### 3. Precio de Bitcoin
 El precio actual de Bitcoin es $XX,XXX USD (fuente: [url])
 
+
+
+---
+
+## EXAMPLE 2: English (Multi-Question)
+
+**User**: "Who is the president of France and what is the capital of Australia?"
+
+**Step 1** (Plan):
+{"thought": "2 questions: 1) President of France (search needed), 2) Capital of Australia (static knowledge but better to confirm)", "todo": ["[ ] Search president of France", "[ ] Search capital of Australia"], "action": "plan"}
+
+**Step 2** (Search):
+{"thought": "Searching for current French president", "action": "search", "query": "current president of France 2026"}
+
+**Step 3** (Final Answer):
+## Response
+
+### 1. President of France
+The current president of France is [Name] (Source: [url]).
+
+### 2. Capital of Australia
+The capital of Australia is Canberra.
+
+
+---
+
+You have to answer in the user languaje (French, Portuguese, etc)
 ---
 
 ## ❌ WRONG BEHAVIORS (never do this)
