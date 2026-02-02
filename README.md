@@ -354,10 +354,6 @@ This project implements multiple layers of security (verified from codebase):
 - **DNS Management**: Fast propagation and secure DNS handling.
 
 
-👉 **[Read the Production Readiness Guide](docs/production_readiness.md)** for detailed security recommendations.
-
-👉 **[See the Security Walkthrough](docs/walkthrough.md)** for implementation details and test results.
-
 ---
 
 ## 🚀 Replicating on Azure
@@ -382,9 +378,7 @@ This project implements multiple layers of security (verified from codebase):
 | Guide | Description |
 |-------|-------------|
 | [Setup Guide](docs/SETUP.md) | Complete installation and deployment instructions |
-| [Azure Deploy Guide](docs/AZURE_DEPLOY_GUIDE.md) | Azure-specific configuration (App Service, Static Web Apps) |
 | [Security Map](docs/SECURITY_MAP.md) | Environment variables for all environments |
-| [Versions](docs/VERSIONS.md) | Exact library versions for reproducibility |
 
 ---
 
@@ -431,20 +425,6 @@ This project implements multiple layers of security (verified from codebase):
 │  └──────────────┘  └──────────────┘  └──────────────┘           │
 └─────────────────────────────────────────────────────────────────┘
 ```
-
----
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Setup Guide](docs/SETUP.md) | Installation and local development |
-| [Azure Deploy Guide](docs/AZURE_DEPLOY_GUIDE.md) | Cloud deployment instructions |
-| [Production Readiness](docs/production_readiness.md) | Security measures and production checklist |
-| [Security Walkthrough](docs/walkthrough.md) | Implementation details of security features |
-| [Security Map](docs/SECURITY_MAP.md) | Environment variables across environments |
-| [Project Roadmap](docs/project_roadmap.md) | Future development plans |
-| [Versions](docs/VERSIONS.md) | Exact library versions |
 
 ---
 
