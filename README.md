@@ -105,9 +105,6 @@ This project is configured to be deployed on **Azure Free Tier**:
 - **Backend** – [Azure App Service (Free Plan)](https://banking-rag-auth-api.azurewebsites.net)
 - **Database** – Azure Database for PostgreSQL (with pgvector extension)
 
-👉 **[Read the Deployment Guide](docs/AZURE_DEPLOY_GUIDE.md)** for step-by-step instructions.
-
-👉 **[See the Setup Guide](docs/SETUP.md)** for complete installation and replication instructions.
 
 ---
 
