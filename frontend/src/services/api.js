@@ -46,41 +46,36 @@ async function request(endpoint, options = {}) {
         credentials: 'include', // Important for cookies
     };
 
-    try {
-        const response = await fetch(url, config);
+    const response = await fetch(url, config);
 
-        // Handle 401 Unauthorized globally
-        if (response.status === 401) {
-            // Token expired or invalid
-            localStorage.removeItem('user');
-            window.dispatchEvent(new Event('auth:logout'));
-        }
-
-        // Handle 403 Forbidden (sometimes used for invalid session too, but distinct from unverified email)
-        // BE CAREFUL: We return 403 for unverified email too. We shouldn't logout automatically then.
-        // Let's rely on the specific error message or context.
-        // For now, only logout on 401 which is strictly "Unauthenticated".
-
-        // Parse response
-        const contentType = response.headers.get('content-type');
-        let data;
-        if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
-        } else {
-            data = await response.text();
-        }
-
-        if (!response.ok) {
-            throw {
-                status: response.status,
-                message: (data && data.detail) || data || 'Request failed',
-                data
-            };
-        }
-
-        return data;
-    } catch (error) {
-        // console.error('API Request Error:', error);
-        throw error;
+    // Handle 401 Unauthorized globally
+    if (response.status === 401) {
+        // Token expired or invalid
+        localStorage.removeItem('user');
+        window.dispatchEvent(new Event('auth:logout'));
     }
+
+    // Handle 403 Forbidden (sometimes used for invalid session too, but distinct from unverified email)
+    // BE CAREFUL: We return 403 for unverified email too. We shouldn't logout automatically then.
+    // Let's rely on the specific error message or context.
+    // For now, only logout on 401 which is strictly "Unauthenticated".
+
+    // Parse response
+    const contentType = response.headers.get('content-type');
+    let data;
+    if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+    } else {
+        data = await response.text();
+    }
+
+    if (!response.ok) {
+        throw {
+            status: response.status,
+            message: (data && data.detail) || data || 'Request failed',
+            data
+        };
+    }
+
+    return data;
 }
