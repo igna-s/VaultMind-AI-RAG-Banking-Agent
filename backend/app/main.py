@@ -250,6 +250,22 @@ async def chat_endpoint(
             import traceback
             logger.error(f"Chat endpoint error: {e}")
             traceback.print_exc()
+            
+            # Save to ErrorLog for debugging in PROD
+            try:
+                with Session(engine) as err_session:
+                    error_log = ErrorLog(
+                        path="chat_stream",
+                        method="STREAM",
+                        error_message=str(e),
+                        stack_trace=traceback.format_exc(),
+                        user_id=user.id
+                    )
+                    err_session.add(error_log)
+                    err_session.commit()
+            except Exception as db_e:
+                logger.error(f"Failed to save chat ErrorLog: {db_e}")
+                
             yield json.dumps({"type": "error", "content": f"Server error: {str(e)}"}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
