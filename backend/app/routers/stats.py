@@ -49,13 +49,18 @@ def get_activity_stats(
     from datetime import datetime, timedelta
     from collections import defaultdict
     
-    query = text("""
+    # Calculate cutoff in Python to ensure consistent timezone handling (UTC)
+    now = datetime.utcnow()
+    cutoff = now - timedelta(hours=24)
+    cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+
+    query = text(f"""
         SELECT 
             date_trunc('hour', hour) as bucket,
             source,
             SUM(tokens) as total_tokens
         FROM token_usage
-        WHERE hour > now() - interval '24 hours'
+        WHERE hour >= '{cutoff_str}'
         GROUP BY bucket, source
         ORDER BY bucket ASC
     """)
@@ -69,13 +74,15 @@ def get_activity_stats(
         hourly_data = defaultdict(lambda: {"groq": 0, "retriever": 0})
         
         for row in rows:
-            hour_str = row[0].strftime("%H:00")
-            source = row[1]
-            tokens = int(row[2]) if row[2] else 0
-            hourly_data[hour_str][source] = tokens
+            # Row[0] is a datetime object from date_trunc
+            if row[0]:
+                hour_str = row[0].strftime("%H:00")
+                source = row[1]
+                tokens = int(row[2]) if row[2] else 0
+                hourly_data[hour_str][source] = tokens
         
         # Generate 24 data points (one for each hour in the last 24h)
-        now = datetime.utcnow()
+        # We recalculate 'now' to match the exact same loop logic
         data = []
         for i in range(24):
             hour_offset = 23 - i  # Start from 24h ago to now
