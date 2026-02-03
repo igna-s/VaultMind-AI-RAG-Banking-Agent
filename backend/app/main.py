@@ -93,9 +93,14 @@ async def global_exception_handler(request: Request, exc: Exception):
     except Exception as db_e:
         logger.error(f"Failed to save ErrorLog: {db_e}")
 
+    # Return generic error in PROD
+    error_detail = str(exc)
+    if settings.APP_MODE == "PROD":
+        error_detail = "An internal error occurred."
+
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal Server Error", "error": str(exc)},
+        content={"detail": "Internal Server Error", "error": error_detail},
     )
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -266,7 +271,11 @@ async def chat_endpoint(
             except Exception as db_e:
                 logger.error(f"Failed to save chat ErrorLog: {db_e}")
                 
-            yield json.dumps({"type": "error", "content": f"Server error: {str(e)}"}) + "\n"
+            error_msg = f"Server error: {str(e)}"
+            if settings.APP_MODE == "PROD":
+                error_msg = "An unexpected error occurred. Please try again later."
+                
+            yield json.dumps({"type": "error", "content": error_msg}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 

@@ -10,6 +10,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from app.config import settings
+
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 # --- Dependencies ---
@@ -301,4 +303,20 @@ def get_error_logs(
     Get system error logs.
     """
     errors = session.exec(select(ErrorLog).order_by(ErrorLog.created_at.desc()).limit(limit)).all()
+    
+    # Security: Hide sensitive details if in PROD mode
+    if settings.APP_MODE == "PROD":
+        sanitized = []
+        for e in errors:
+            sanitized.append({
+                "id": e.id,
+                "user_id": e.user_id,
+                "path": e.path,
+                "method": e.method,
+                "error_message": "Internal System Error (Hidden in PROD)",
+                "stack_trace": "Stack trace hidden in production mode for security.",
+                "created_at": e.created_at
+            })
+        return sanitized
+        
     return errors
