@@ -43,8 +43,11 @@ def get_activity_stats(
     """
     Returns token usage for the last 24 hours (grouped by hour).
     Returns separate data for 'groq' (LLM) and 'retriever' (embeddings).
+    Always returns 24 data points (one per hour).
     """
     from sqlalchemy import text
+    from datetime import datetime, timedelta
+    from collections import defaultdict
     
     query = text("""
         SELECT 
@@ -58,21 +61,39 @@ def get_activity_stats(
     """)
     
     try:
-        results = session.exec(query).all()
-        # Build response: [{hour: "10:00", groq: 1500, retriever: 200}, ...]
-        from collections import defaultdict
+        # Use session.execute() for raw SQL (not session.exec())
+        result = session.execute(query)
+        rows = result.fetchall()
+        
+        # Build hourly map from DB results
         hourly_data = defaultdict(lambda: {"groq": 0, "retriever": 0})
         
-        for row in results:
-            hour_str = row[0].strftime("%H:%M")
+        for row in rows:
+            hour_str = row[0].strftime("%H:00")
             source = row[1]
-            tokens = row[2]
+            tokens = int(row[2]) if row[2] else 0
             hourly_data[hour_str][source] = tokens
         
-        # Convert to array format for frontend
-        data = [{"hour": h, "groq": v["groq"], "retriever": v["retriever"]} for h, v in sorted(hourly_data.items())]
+        # Generate 24 data points (one for each hour in the last 24h)
+        now = datetime.utcnow()
+        data = []
+        for i in range(24):
+            hour_offset = 23 - i  # Start from 24h ago to now
+            hour_time = now - timedelta(hours=hour_offset)
+            hour_key = hour_time.strftime("%H:00")
+            
+            data.append({
+                "hour": hour_key,
+                "groq": hourly_data.get(hour_key, {}).get("groq", 0),
+                "retriever": hourly_data.get(hour_key, {}).get("retriever", 0)
+            })
+        
         return data
+        
     except Exception as e:
         logger.error(f"Stats Error: {e}")
-        return []
+        import traceback
+        traceback.print_exc()
+        # Return empty 24-hour array on error
+        return [{"hour": f"{i:02d}:00", "groq": 0, "retriever": 0} for i in range(24)]
 

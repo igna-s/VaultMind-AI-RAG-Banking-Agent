@@ -49,18 +49,24 @@ export default function Overview() {
     };
 
     const getTokenData = (index) => {
-        if (!activityData || activityData.length === 0) return { groq: 5, retriever: 5 };
+        if (!activityData || activityData.length === 0) return { groq: 5, retriever: 5, rawGroq: 0, rawRetriever: 0 };
 
-        const dataPoint = activityData[index % activityData.length];
-        if (!dataPoint) return { groq: 5, retriever: 5 };
+        // Backend now returns exactly 24 data points
+        const dataPoint = activityData[index];
+        if (!dataPoint) return { groq: 5, retriever: 5, rawGroq: 0, rawRetriever: 0 };
 
         const maxTokens = getDynamicMaxTokens();
+        const rawGroq = dataPoint.groq || 0;
+        const rawRetriever = dataPoint.retriever || 0;
 
         return {
-            groq: Math.min((dataPoint.groq || 0) / maxTokens * 100 + 5, 100),
-            retriever: Math.min((dataPoint.retriever || 0) / maxTokens * 100 + 5, 100)
+            groq: Math.min(rawGroq / maxTokens * 100 + 5, 100),
+            retriever: Math.min(rawRetriever / maxTokens * 100 + 5, 100),
+            rawGroq,
+            rawRetriever
         };
     };
+
 
     const handlePromptClick = (text) => {
         navigate('/dashboard/chat', { state: { initialQuery: text } });
@@ -151,12 +157,12 @@ export default function Overview() {
                                             <div
                                                 className="w-full bg-purple-500/60 rounded-t-sm transition-all duration-1000"
                                                 style={{ height: `${data.groq}%` }}
-                                                title={`Groq: ${activityData[i % activityData.length]?.groq || 0} tokens`}
+                                                title={`Groq: ${data.rawGroq} tokens`}
                                             />
                                             <div
                                                 className="w-full bg-emerald-500/60 rounded-t-sm transition-all duration-1000"
                                                 style={{ height: `${data.retriever}%` }}
-                                                title={`Retriever: ${activityData[i % activityData.length]?.retriever || 0} tokens`}
+                                                title={`Retriever: ${data.rawRetriever} tokens`}
                                             />
                                         </div>
                                     );

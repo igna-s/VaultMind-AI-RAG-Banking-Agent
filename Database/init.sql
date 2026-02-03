@@ -232,7 +232,7 @@ ON document_chunks
 USING hnsw (embedding vector_cosine_ops);
 
 -- =============================================================================
--- End of Script
+-- 5. ANALYTICS & LOGGING MODULE
 -- =============================================================================
 
 -- Token Usage Tracking
@@ -241,7 +241,50 @@ CREATE TABLE IF NOT EXISTS token_usage (
     hour TIMESTAMP NOT NULL,
     source VARCHAR(50) NOT NULL,
     tokens INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_id INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_token_usage_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS ix_token_usage_hour ON token_usage(hour);
+CREATE INDEX IF NOT EXISTS ix_token_usage_user ON token_usage(user_id);
+
+-- Idempotency for token_usage
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='token_usage' AND column_name='user_id') THEN
+        ALTER TABLE token_usage ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
+-- User Activity Logs
+CREATE TABLE IF NOT EXISTS user_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    event VARCHAR(50) NOT NULL, -- 'LOGIN', 'LOGOUT', 'TOKEN_USAGE', etc.
+    details JSONB DEFAULT '{}',
+    ip_address VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS ix_user_logs_user ON user_logs(user_id);
+CREATE INDEX IF NOT EXISTS ix_user_logs_created ON user_logs(created_at);
+
+-- System Error Logs
+CREATE TABLE IF NOT EXISTS error_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    path TEXT,
+    method VARCHAR(10),
+    error_message TEXT NOT NULL,
+    stack_trace TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_error_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_error_logs_created ON error_logs(created_at);
+
+-- =============================================================================
+-- End of Script
+-- =============================================================================
