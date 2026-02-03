@@ -335,9 +335,12 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             logger.info(f"[LLM] Response content length: {len(content)}")
 
             if not content:
-                # Retry once
-                messages.append(AIMessage(content=""))
-                messages.append(HumanMessage(content="Please provide a valid JSON response with your plan or answer."))
+                # Retry once - DON'T add empty AIMessage as it causes API errors
+                messages.append(
+                    HumanMessage(
+                        content="Your last response was empty. Please provide a valid response with your plan or answer."
+                    )
+                )
                 continue
 
             # Try to parse JSON - find ALL JSON blocks
@@ -447,6 +450,13 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             error_str = str(e)
             logger.error(f"[LLM] Exception in agent loop: {error_str}")
 
+            # Handle rate limit errors
+            if "rate_limit" in error_str.lower() or "429" in error_str:
+                logger.warning(f"Rate limit hit: {e}")
+                add_step("Rate limit reached, please wait...", "rate_limit")
+                yield {"type": "error", "content": "Rate limit reached. Please wait a moment and try again."}
+                return
+
             # Handle Groq's tool_choice error - retry without expecting tool call
             if "tool_use_failed" in error_str or "Tool choice is none" in error_str:
                 logger.warning(f"Tool choice error, retrying with direct answer prompt: {e}")
@@ -470,7 +480,9 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
 
             logger.error(f"Error in agent loop: {e}")
             add_step(f"Error: {str(e)[:100]}", "error")
-            break
+            # Yield error to inform frontend instead of just breaking
+            yield {"type": "error", "content": f"LLM processing error: {str(e)[:100]}"}
+            return
 
     if not final_response:
         # Check if we have a partial answer in the last JSON
