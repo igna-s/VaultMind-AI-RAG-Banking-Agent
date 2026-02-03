@@ -216,10 +216,10 @@ El precio actual de Bitcoin es $XX,XXX USD (fuente: [url])
 **User**: "Who is the president of France and what is the capital of Australia?"
 
 **Step 1** (Plan):
-{"thought": "2 questions: 1) President of France (search needed), 2) Capital of Australia (static knowledge but better to confirm)", "todo": ["[ ] Search president of France", "[ ] Search capital of Australia"], "action": "plan"}
+{{"thought": "2 questions: 1) President of France (search needed), 2) Capital of Australia (static knowledge but better to confirm)", "todo": ["[ ] Search president of France", "[ ] Search capital of Australia"], "action": "plan"}}
 
 **Step 2** (Search):
-{"thought": "Searching for current French president", "action": "search", "query": "current president of France 2026"}
+{{"thought": "Searching for current French president", "action": "search", "query": "current president of France 2026"}}
 
 **Step 3** (Final Answer):
 ## Response
