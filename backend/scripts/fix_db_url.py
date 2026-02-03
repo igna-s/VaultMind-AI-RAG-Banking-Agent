@@ -15,9 +15,8 @@ def fix_env():
     for line in lines:
         if line.startswith("DATABASE_URL="):
             # Format: postgresql://user:pass@host:port/db?sslmode=require
-            # Problem: pass contains @
-            # We know the specific structure we generated:
-            # postgresql://REDACTED_USER:REDACTED!$@thedefinitive-db...
+            # Problem: password may contain special characters like @ or !
+            # This script properly URL-encodes the password
             
             # Split by '://'
             prefix, rest = line.strip().split("://", 1)
@@ -30,6 +29,7 @@ def fix_env():
             # We know the user is 'REDACTED_USER'.
             user = "REDACTED_USER"
             
+
             # Find user in rest
             if rest.startswith(user + ":"):
                 # rest = REDACTED_USER:PASSWORD@HOST...
