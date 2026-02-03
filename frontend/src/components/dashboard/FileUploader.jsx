@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
 
 export const FileUploader = () => {
     const [isDragging, setIsDragging] = useState(false);

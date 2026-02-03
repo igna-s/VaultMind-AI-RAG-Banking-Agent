@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, Bot, User as UserIcon, Loader2, Paperclip, Plus, MessageSquare, Trash2, Menu, X } from 'lucide-react';
+import { Send, Bot, User as UserIcon, Loader2, Paperclip, Plus, MessageSquare, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -115,11 +115,7 @@ export default function ChatPage() {
     useEffect(() => {
         const loadHistory = async () => {
             if (!activeSession) {
-                if (!location.state?.initialQuery) {
-                    setMessages([]);
-                } else {
-                    setMessages([]);
-                }
+                setMessages([]);
                 return;
             }
 

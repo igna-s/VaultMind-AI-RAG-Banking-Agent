@@ -1,12 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Search, Edit2, Check, X, Shield, FileText, AlertTriangle, Terminal, Clock, Activity } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Users, Search, Edit2, Check, X, Shield, FileText, AlertTriangle, Terminal } from 'lucide-react';
 
 export default function UserManagement() {
-    const { refreshUser } = useAuth();
-    const navigate = useNavigate();
 
     const [activeTab, setActiveTab] = useState('users'); // 'users', 'logs', 'errors'
 

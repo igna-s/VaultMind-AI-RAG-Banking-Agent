@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, X, Bot, User as UserIcon, Loader2 } from 'lucide-react';
-// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
 
 export const ChatPanel = ({ onClose }) => {
     const [input, setInput] = useState('');

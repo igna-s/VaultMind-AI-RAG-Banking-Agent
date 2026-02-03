@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Database, Plus, FileText, Trash2, Folder, Upload, Loader2, Check } from 'lucide-react';
+import { Database, Plus, FileText, Trash2, Folder, Upload, Loader2 } from 'lucide-react';
 
 export default function KnowledgeManagement() {
     const [kbs, setKbs] = useState([]);
