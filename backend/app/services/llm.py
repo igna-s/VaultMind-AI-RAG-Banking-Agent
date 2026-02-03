@@ -324,7 +324,9 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             logger.info(f"[LLM] Iteration {iteration+1}: Got response from Groq")
             
             # Record usage
-            usage = getattr(response, 'response_metadata', {}).get('usage', {})
+            metadata = getattr(response, 'response_metadata', {})
+            usage = metadata.get('usage', {}) or metadata.get('token_usage', {})
+            
             if usage.get('total_tokens', 0) > 0:
                 record_token_usage("groq", usage['total_tokens'], user_id=user_id)
             

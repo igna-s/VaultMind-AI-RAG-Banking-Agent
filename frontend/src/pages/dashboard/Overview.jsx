@@ -44,7 +44,8 @@ export default function Overview() {
     // Helper to get bar heights from token data
     const getDynamicMaxTokens = () => {
         if (!activityData || activityData.length === 0) return 1000;
-        const maxVal = Math.max(...activityData.map(d => Math.max(d.groq || 0, d.retriever || 0)));
+        // Correct scaling for stacked bars: Max of (Groq + Retriever)
+        const maxVal = Math.max(...activityData.map(d => (d.groq || 0) + (d.retriever || 0)));
         return maxVal > 100 ? maxVal : 100; // Minimum scale 100
     };
 
@@ -60,8 +61,8 @@ export default function Overview() {
         const rawRetriever = dataPoint.retriever || 0;
 
         return {
-            groq: Math.min(rawGroq / maxTokens * 100 + 5, 100),
-            retriever: Math.min(rawRetriever / maxTokens * 100 + 5, 100),
+            groq: Math.min(rawGroq / maxTokens * 100, 100), // Height %
+            retriever: Math.min(rawRetriever / maxTokens * 100, 100), // Height %
             rawGroq,
             rawRetriever
         };
@@ -149,26 +150,42 @@ export default function Overview() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 flex items-end justify-center gap-1 h-40 mt-4 px-4 overflow-hidden relative">
-                                {[...Array(24)].map((_, i) => {
-                                    const data = getTokenData(i);
-                                    return (
-                                        <div key={i} className="w-full flex flex-col items-center gap-0.5" style={{ maxWidth: '16px' }}>
-                                            <div
-                                                className="w-full bg-purple-500/60 rounded-t-sm transition-all duration-1000"
-                                                style={{ height: `${data.groq}%` }}
-                                                title={`Groq: ${data.rawGroq} tokens`}
-                                            />
-                                            <div
-                                                className="w-full bg-emerald-500/60 rounded-t-sm transition-all duration-1000"
-                                                style={{ height: `${data.retriever}%` }}
-                                                title={`Retriever: ${data.rawRetriever} tokens`}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                                <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
+                            <div className="flex h-40 mt-4 relative">
+                                {/* Y-Axis Scale */}
+                                <div className="flex flex-col justify-between text-xs text-white/30 font-mono pr-2 h-full text-right w-12 border-r border-white/10 py-1">
+                                    <span>{getDynamicMaxTokens()}</span>
+                                    <span>{Math.round(getDynamicMaxTokens() / 2)}</span>
+                                    <span>0</span>
+                                </div>
+
+                                {/* Chart Area */}
+                                <div className="flex-1 flex items-end justify-center gap-1 h-full px-4 overflow-hidden relative">
+
+                                    {[...Array(24)].map((_, i) => {
+                                        const data = getTokenData(i);
+                                        // Make sure min height is used if value > 0 but small, to ensure visibility
+                                        const groqHeight = data.rawGroq > 0 ? Math.max(data.groq, 2) : 0;
+                                        const retHeight = data.rawRetriever > 0 ? Math.max(data.retriever, 2) : 0;
+
+                                        return (
+                                            <div key={i} className="w-full h-full flex flex-col justify-end items-center gap-0.5" style={{ maxWidth: '16px' }}>
+                                                <div
+                                                    className="w-full bg-purple-500/60 rounded-t-sm transition-all duration-1000"
+                                                    style={{ height: `${groqHeight}%` }}
+                                                    title={`Groq: ${data.rawGroq} tokens`}
+                                                />
+                                                <div
+                                                    className="w-full bg-emerald-500/60 rounded-t-sm transition-all duration-1000"
+                                                    style={{ height: `${retHeight}%` }}
+                                                    title={`Retriever: ${data.rawRetriever} tokens`}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
+                                </div>
                             </div>
+
                             <div className="mt-4 flex justify-between text-xs text-white/30 font-mono uppercase tracking-wider">
                                 <span>24h Ago</span>
                                 <span>12h Ago</span>
