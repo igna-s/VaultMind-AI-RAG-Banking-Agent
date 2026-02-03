@@ -118,6 +118,26 @@ export default function KnowledgeManagement() {
         }
     };
 
+    const handleDeleteDocument = async (docId, docTitle) => {
+        if (!confirm(`¿Estás seguro de que deseas eliminar "${docTitle}"?`)) return;
+
+        try {
+            const res = await fetch(`${API_URL}/admin/documents/${docId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (res.ok) {
+                // Refresh both documents list and KB list (to update count)
+                fetchDocuments(selectedKb.id);
+                fetchKbs();
+            } else {
+                console.error("Failed to delete document");
+            }
+        } catch (error) {
+            console.error("Error deleting document", error);
+        }
+    };
+
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 h-full flex flex-col">
             <header className="flex items-center justify-between">
@@ -226,8 +246,12 @@ export default function KnowledgeManagement() {
                                                     <h5 className="text-white/90 font-medium truncate">{doc.title}</h5>
                                                     <p className="text-xs text-white/40">{new Date(doc.created_at).toLocaleDateString()}</p>
                                                 </div>
-                                                {/* Delete button (not working yet but UI ready) */}
-                                                <button className="p-2 text-white/20 hover:text-red-400 transition-colors">
+                                                {/* Delete button */}
+                                                <button
+                                                    onClick={() => handleDeleteDocument(doc.id, doc.title)}
+                                                    className="p-2 text-white/20 hover:text-red-400 transition-colors"
+                                                    title="Eliminar documento"
+                                                >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>

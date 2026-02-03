@@ -243,6 +243,25 @@ def list_kb_documents(kb_id: int, session: Session = Depends(get_session), admin
     return [{"id": doc.id, "title": doc.title, "type": doc.type, "created_at": doc.created_at} for doc in docs]
 
 
+@router.delete("/documents/{doc_id}")
+def delete_document(doc_id: int, session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    """Delete a document and all its associated chunks."""
+    doc = session.get(Document, doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Delete all chunks associated with this document first
+    chunks = session.exec(select(DocumentChunk).where(DocumentChunk.document_id == doc_id)).all()
+    for chunk in chunks:
+        session.delete(chunk)
+
+    # Delete the document
+    session.delete(doc)
+    session.commit()
+
+    return {"status": "deleted", "doc_id": doc_id}
+
+
 # --- System Logs ---
 
 
