@@ -1,8 +1,10 @@
 import pytest
+
 from app.config import settings
 
 # Simple fixtures for testing
 # No complex mocking - tests should be straightforward
+
 
 @pytest.fixture
 def test_settings():

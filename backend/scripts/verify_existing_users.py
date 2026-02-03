@@ -1,6 +1,7 @@
-from sqlmodel import Session, select, text
+from sqlmodel import Session, text
+
 from app.database import engine
-from app.models import User
+
 
 def verify_all_existing_users():
     with Session(engine) as session:
@@ -10,6 +11,7 @@ def verify_all_existing_users():
         session.exec(statement)
         session.commit()
         print("Successfully verified all existing users.")
+
 
 if __name__ == "__main__":
     verify_all_existing_users()

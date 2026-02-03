@@ -1,25 +1,27 @@
 import os
 import sys
-from sqlmodel import select, Session
+
 from sqlalchemy.orm import selectinload
+from sqlmodel import Session, select
 
 # Add the parent directory to sys.path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from app.database import engine
-from app.models import User, Document, DocumentChunk, ChatSession, ChatMessage
+from app.models import ChatSession, Document, User
+
 
 def view_content():
     print("📊 Viewing Database Content (PostgreSQL Azure)")
-    print("="*60)
-    
+    print("=" * 60)
+
     with Session(engine) as session:
         # 1. Users
         print("\n👥 USERS")
         users = session.exec(select(User)).all()
         for u in users:
             print(f"   ID: {u.id} | Email: {u.email} | Role: {u.role}")
-            
+
         # 2. Key Documents & Chunks
         print("\n📄 DOCUMENTS & CHUNKS")
         # Load relationships
@@ -48,7 +50,8 @@ def view_content():
                     if m.used_sources:
                         print(f"          🔗 Citations: {m.used_sources}")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
+
 
 if __name__ == "__main__":
     view_content()

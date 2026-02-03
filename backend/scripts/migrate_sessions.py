@@ -1,11 +1,13 @@
-from sqlmodel import Session, select, text
-from app.database import engine
-from app.models import ChatSession
 import logging
+
+from sqlmodel import Session, text
+
+from app.database import engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def migrate_sessions():
     """
@@ -14,17 +16,19 @@ def migrate_sessions():
     2. Backfill updated_at with created_at for existing records
     """
     logger.info("Starting migration: Adding updated_at to chat_sessions")
-    
+
     with Session(engine) as session:
         # 1. Add column if not exists
         try:
             # Check if column exists
             # This is a postgres specific check
-            result = session.exec(text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name='chat_sessions' AND column_name='updated_at'"
-            )).first()
-            
+            result = session.exec(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name='chat_sessions' AND column_name='updated_at'"
+                )
+            ).first()
+
             if not result:
                 logger.info("Column 'updated_at' not found. Adding it...")
                 session.exec(text("ALTER TABLE chat_sessions ADD COLUMN updated_at TIMESTAMP WITHOUT TIME ZONE"))
@@ -32,7 +36,7 @@ def migrate_sessions():
                 logger.info("Column added successfully.")
             else:
                 logger.info("Column 'updated_at' already exists.")
-                
+
         except Exception as e:
             logger.error(f"Error adding column: {e}")
             session.rollback()
@@ -45,10 +49,11 @@ def migrate_sessions():
             session.exec(text("UPDATE chat_sessions SET updated_at = created_at WHERE updated_at IS NULL"))
             session.commit()
             logger.info("Backfill completed.")
-            
+
         except Exception as e:
             logger.error(f"Error backfilling data: {e}")
             session.rollback()
+
 
 if __name__ == "__main__":
     migrate_sessions()

@@ -1,9 +1,11 @@
+import json
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
-import json
 
 console = Console()
+
 
 def format_message_content(message):
     """Convert message content to displayable string."""
@@ -27,17 +29,14 @@ def format_message_content(message):
         parts.append(str(message.content))
 
     # Handle tool calls attached to the message (OpenAI format)
-    if (
-        not tool_calls_processed
-        and hasattr(message, "tool_calls")
-        and message.tool_calls
-    ):
+    if not tool_calls_processed and hasattr(message, "tool_calls") and message.tool_calls:
         for tool_call in message.tool_calls:
             parts.append(f"\n🔧 Tool Call: {tool_call['name']}")
             parts.append(f"   Args: {json.dumps(tool_call['args'], indent=2, ensure_ascii=False)}")
             parts.append(f"   ID: {tool_call['id']}")
 
     return "\n".join(parts)
+
 
 def format_messages(messages):
     """Format and display a list of messages with Rich formatting."""
@@ -54,6 +53,7 @@ def format_messages(messages):
             console.print(Panel(content, title="🔧 Tool Output", border_style="yellow"))
         else:
             console.print(Panel(content, title=f"📨 {msg_type}", border_style="white"))
+
 
 def show_prompt(prompt_text: str, title: str = "Prompt", border_style: str = "blue"):
     """Display a prompt with rich formatting and XML tag highlighting."""

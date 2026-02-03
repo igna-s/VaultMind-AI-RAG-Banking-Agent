@@ -1,8 +1,9 @@
-import os
 import logging
+import os
 import time
-from datetime import datetime
 from collections import deque
+from datetime import datetime
+
 from dotenv import load_dotenv
 
 # Load .env file
@@ -11,11 +12,12 @@ env_path = os.path.join(current_dir, "../../.env")
 if os.path.exists(env_path):
     load_dotenv(env_path, override=True)
 
-from langchain_groq import ChatGroq
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
-from tavily import TavilyClient
-import json
-import re
+import json # noqa: E402
+import re # noqa: E402
+
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage # noqa: E402
+from langchain_groq import ChatGroq # noqa: E402
+from tavily import TavilyClient # noqa: E402
 
 # Initialize Clients
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -28,25 +30,28 @@ MAX_REQUESTS_PER_MINUTE = 20
 RATE_LIMIT_WINDOW = 60  # seconds
 api_call_timestamps = deque()  # Track API call times
 
+
 def check_rate_limit() -> tuple[bool, int]:
     """
     Check if we're approaching the rate limit.
     Returns: (can_proceed, remaining_calls)
     """
     current_time = time.time()
-    
+
     # Remove timestamps older than 1 minute
     while api_call_timestamps and current_time - api_call_timestamps[0] > RATE_LIMIT_WINDOW:
         api_call_timestamps.popleft()
-    
+
     remaining = MAX_REQUESTS_PER_MINUTE - len(api_call_timestamps)
     can_proceed = remaining > 0
-    
+
     return can_proceed, remaining
+
 
 def record_api_call():
     """Record an API call timestamp."""
     api_call_timestamps.append(time.time())
+
 
 if not GROQ_API_KEY:
     logger.warning("GROQ_API_KEY not set. LLM generation will fail.")
@@ -55,11 +60,12 @@ else:
 
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY) if TAVILY_API_KEY else None
 
+
 def perform_web_search(query: str, max_results: int = 3) -> str:
     """Search the web using Tavily."""
     if not tavily_client:
         return "Search unavailable (No API Key)."
-    
+
     try:
         results = tavily_client.search(query=query, max_results=max_results, search_depth="advanced")
         context = []
@@ -70,48 +76,48 @@ def perform_web_search(query: str, max_results: int = 3) -> str:
         logger.error(f"Tavily search failed: {e}")
         return f"Search failed: {str(e)}"
 
+
 # Initialize LLM WITHOUT tools binding - using JSON-based tool calling in the prompt
 # Changed from gpt-oss-120b (forces tool_choice) to llama-3.3 which works with JSON prompts
 if GROQ_API_KEY:
     llm = ChatGroq(
         temperature=0.1,  # Slight temperature for more natural responses
         model_name="llama-3.3-70b-versatile",
-        api_key=GROQ_API_KEY
+        api_key=GROQ_API_KEY,
     )
 else:
     llm = None
+
 
 def load_prompt(filename: str) -> str:
     """Load a prompt from the backend/agent/prompts directory."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     prompt_path = os.path.join(current_dir, "../../agent/prompts", filename)
     try:
-        with open(prompt_path, "r") as f:
+        with open(prompt_path) as f:
             return f.read().strip()
     except Exception as e:
         logger.error(f"Failed to load prompt {filename}: {e}")
         return ""
 
+
 def record_token_usage(source: str, tokens: int, user_id: int = None):
     """Record token usage to database for analytics."""
     from sqlmodel import Session
+
     from app.database import engine
     from app.models import TokenUsage
-    
+
     current_hour = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
-    
+
     try:
         with Session(engine) as session:
-            usage = TokenUsage(
-                hour=current_hour,
-                source=source,
-                tokens=tokens,
-                user_id=user_id
-            )
+            usage = TokenUsage(hour=current_hour, source=source, tokens=tokens, user_id=user_id)
             session.add(usage)
             session.commit()
     except Exception as e:
         logger.error(f"Failed to record token usage: {e}")
+
 
 async def generate_response_stream(query: str, context_chunks: list = None, history: list = None, user_id: int = None):
     """
@@ -119,10 +125,10 @@ async def generate_response_stream(query: str, context_chunks: list = None, hist
     Uses JSON-based tool calling (not native function calling) for compatibility with gpt-oss.
     """
     logger.info(f"[LLM] Starting generate_response_stream with query: {query[:50]}...")
-    
+
     context_text = ""
     sources = []
-    
+
     # 1. Prepare Context from RAG
     if context_chunks:
         logger.info(f"[LLM] Processing {len(context_chunks)} context chunks")
@@ -236,7 +242,7 @@ The capital of Australia is Canberra.
 ## 🌐 LANGUAGE RULE (CRITICAL!)
 **MATCH THE USER'S LANGUAGE EXACTLY:**
 - If user writes in English → Answer in English
-- If user writes in Spanish → Answer in Spanish  
+- If user writes in Spanish → Answer in Spanish
 - If user writes in French → Answer in French
 - etc.
 
@@ -262,7 +268,7 @@ Never default to Spanish. Always mirror the exact language the user uses in thei
 You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
 
     messages = [SystemMessage(content=system_content)]
-    
+
     # Add conversation history
     if history:
         for msg in history:
@@ -271,34 +277,29 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             elif msg.role in ["ai", "assistant"]:
                 if msg.content:
                     messages.append(AIMessage(content=msg.content))
-    
+
     # Add the current query
     messages.append(HumanMessage(content=query))
-    
+
     # 3. Agent loop
     max_iterations = 20  # Deep agent mode - allows for multi-step reasoning
     reasoning_steps = []
     final_response = ""
     collected_info = []
     step_counter = 0
-    
+
     def add_step(content: str, action: str = "status", todo_list: list = None):
         nonlocal step_counter
         step_counter += 1
-        step_data = {
-            "step": step_counter,
-            "action": action,
-            "content": content,
-            "timestamp": str(datetime.utcnow())
-        }
+        step_data = {"step": step_counter, "action": action, "content": content, "timestamp": str(datetime.utcnow())}
         if todo_list:
             step_data["todo_list"] = todo_list
         reasoning_steps.append(step_data)
-    
+
     # Initial status
     add_step("Initializing Agent & Planning...", "analyze")
     yield {"type": "status", "content": "Planning..."}
-    
+
     if context_chunks:
         add_step(f"Loaded {len(context_chunks)} docs from Knowledge Base", "retriever")
 
@@ -307,7 +308,7 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             add_step("LLM not configured", "error")
             yield {"type": "error", "content": "LLM not configured"}
             return
-        
+
         # Check rate limit
         can_proceed, remaining = check_rate_limit()
         if not can_proceed:
@@ -315,24 +316,24 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
             yield {"type": "status", "content": "Rate limit reached..."}
             final_response = "⚠️ Rate limit reached. Please try again later."
             break
-        
+
         try:
             record_api_call()
             # Call the model
-            logger.info(f"[LLM] Iteration {iteration+1}: Calling Groq API...")
+            logger.info(f"[LLM] Iteration {iteration + 1}: Calling Groq API...")
             response = await llm.ainvoke(messages)
-            logger.info(f"[LLM] Iteration {iteration+1}: Got response from Groq")
-            
+            logger.info(f"[LLM] Iteration {iteration + 1}: Got response from Groq")
+
             # Record usage
-            metadata = getattr(response, 'response_metadata', {})
-            usage = metadata.get('usage', {}) or metadata.get('token_usage', {})
-            
-            if usage.get('total_tokens', 0) > 0:
-                record_token_usage("groq", usage['total_tokens'], user_id=user_id)
-            
+            metadata = getattr(response, "response_metadata", {})
+            usage = metadata.get("usage", {}) or metadata.get("token_usage", {})
+
+            if usage.get("total_tokens", 0) > 0:
+                record_token_usage("groq", usage["total_tokens"], user_id=user_id)
+
             content = response.content.strip() if response.content else ""
             logger.info(f"[LLM] Response content length: {len(content)}")
-            
+
             if not content:
                 # Retry once
                 messages.append(AIMessage(content=""))
@@ -341,14 +342,14 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
 
             # Try to parse JSON - find ALL JSON blocks
             # Regex to find ALL JSON objects in content
-            json_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', content)
+            json_matches = re.findall(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", content)
             parsed_json = None
-            
+
             # Try each JSON object, prioritizing 'search' actions
             search_json = None
             plan_json = None
             any_json = None
-            
+
             for match in json_matches:
                 try:
                     candidate = json.loads(match)
@@ -360,23 +361,23 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
                             plan_json = candidate
                         elif not any_json:
                             any_json = candidate
-                except:
+                except Exception:
                     continue
-            
+
             # Prioritize: search > plan > any other
             parsed_json = search_json or plan_json or any_json
-            
+
             # Parsing logic
             if parsed_json:
                 action = parsed_json.get("action", "")
                 thought = parsed_json.get("thought", "")
                 todo_list = parsed_json.get("todo") or parsed_json.get("todo_list") or []
-                
+
                 # Show thought if present
                 if thought:
                     add_step(thought, "thought", todo_list)
                     yield {"type": "status", "content": f"💭 {thought[:80]}"}
-                
+
                 # Show plan only if present (simplified)
                 if todo_list:
                     plan_items = [item for item in todo_list if isinstance(item, str)]
@@ -389,58 +390,74 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
                     query_term = parsed_json.get("query", query)
                     add_step(f"Searching: {query_term}", "search")
                     yield {"type": "status", "content": f"🔍 Searching: {query_term}"}
-                    
+
                     search_res = perform_web_search(query_term)
-                    
+
                     collected_info.append(f"Search '{query_term}': {search_res[:500]}...")
-                    
+
                     # Add result to history
-                    messages.append(AIMessage(content=content)) # Add the JSON reasoning
-                    messages.append(HumanMessage(content=f"Search Results:\n{search_res}\n\nNow continue with your plan. If you have more searches to do, do them. Otherwise provide the final answer."))
-                    
+                    messages.append(AIMessage(content=content))  # Add the JSON reasoning
+                    messages.append(
+                        HumanMessage(
+                            content=f"Search Results:\n{search_res}\n\nNow continue with your plan. If you have more searches to do, do them. Otherwise provide the final answer."
+                        )
+                    )
+
                     add_step("Processed search results", "search_complete")
                     continue
-                
+
                 elif action == "answer":
                     # Done
                     final_response = parsed_json.get("content", "")
                     if final_response:
                         add_step("Generated final response", "answer")
-                        break # Done loop
+                        break  # Done loop
                     # If empty content, fall through to text check or loop
-                
+
                 elif action == "plan":
                     # Plan update - add to messages and MUST continue
                     messages.append(AIMessage(content=content))
                     # Force continuation - ask for next step
-                    messages.append(HumanMessage(content="Good plan. Now execute it step by step. Start with the first search action."))
+                    messages.append(
+                        HumanMessage(
+                            content="Good plan. Now execute it step by step. Start with the first search action."
+                        )
+                    )
                     continue
-                
+
                 else:
                     # Unknown action (like "knowledge_base_check") - treat as intermediate step
                     # Add to messages and continue
                     messages.append(AIMessage(content=content))
-                    messages.append(HumanMessage(content="Continue with your plan. Execute the next search or provide the final answer if done."))
+                    messages.append(
+                        HumanMessage(
+                            content="Continue with your plan. Execute the next search or provide the final answer if done."
+                        )
+                    )
                     add_step(f"Intermediate step: {action}", "intermediate")
                     continue
-            
+
             # If NO JSON found (text response) = final answer
             if not parsed_json:
                 final_response = content
                 add_step("Generated final response", "answer")
-                break 
-            
+                break
+
         except Exception as e:
             error_str = str(e)
             logger.error(f"[LLM] Exception in agent loop: {error_str}")
-            
+
             # Handle Groq's tool_choice error - retry without expecting tool call
             if "tool_use_failed" in error_str or "Tool choice is none" in error_str:
                 logger.warning(f"Tool choice error, retrying with direct answer prompt: {e}")
                 add_step("Retrying with direct response...", "retry")
                 try:
                     # Add instruction to answer directly
-                    messages.append(HumanMessage(content="Please answer directly as plain text, do not use any tools or JSON formatting. Just provide your answer."))
+                    messages.append(
+                        HumanMessage(
+                            content="Please answer directly as plain text, do not use any tools or JSON formatting. Just provide your answer."
+                        )
+                    )
                     record_api_call()
                     response = await llm.ainvoke(messages)
                     content = response.content.strip() if response.content else ""
@@ -450,27 +467,27 @@ You have up to 20 steps. Use as many as needed. DO NOT RUSH."""
                         break
                 except Exception as retry_e:
                     logger.error(f"Retry also failed: {retry_e}")
-            
+
             logger.error(f"Error in agent loop: {e}")
             add_step(f"Error: {str(e)[:100]}", "error")
             break
 
     if not final_response:
-         # Check if we have a partial answer in the last JSON
+        # Check if we have a partial answer in the last JSON
         if collected_info:
-             final_response = "I gathered this info:\n" + "\n".join(collected_info)
+            final_response = "I gathered this info:\n" + "\n".join(collected_info)
         else:
-             final_response = "I couldn't generate a complete response."
-    
+            final_response = "I couldn't generate a complete response."
+
     # Clean markdown output - remove any remaining JSON blocks
-    final_response = re.sub(r'```json.*?```', '', final_response, flags=re.DOTALL)
+    final_response = re.sub(r"```json.*?```", "", final_response, flags=re.DOTALL)
     # Also remove inline JSON patterns that might slip through
-    final_response = re.sub(r'\{"action"[^}]+\}', '', final_response)
+    final_response = re.sub(r'\{"action"[^}]+\}', "", final_response)
     final_response = final_response.strip()
 
     yield {
         "type": "answer",
         "response": final_response,
         "sources": list(set(sources)),
-        "reasoning_data": {"steps": reasoning_steps}
+        "reasoning_data": {"steps": reasoning_steps},
     }

@@ -1,21 +1,21 @@
 from datetime import datetime
-from typing import Literal
 
 from langchain_groq import ChatGroq
-from langchain_core.messages import SystemMessage
-from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
 
 from agent.state import DeepAgentState
-from agent.tools.search import tavily_search
 from agent.tools.general import think_tool
+from agent.tools.search import tavily_search
+
 # from agent.tools.filesystem import read_file
 
 # --- Configuración de modelos ---
 model = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.0)
 
+
 def get_today_str() -> str:
     return datetime.now().strftime("%a %b %-d, %Y")
+
 
 RESEARCHER_INSTRUCTIONS = """
 You are a research assistant conducting research on the user's input topic. For context, today's date is {date}.
@@ -38,13 +38,10 @@ Stop after you have found sufficient information or if you have searched 5 times
 </Limit>
 """
 
-research_tools = [tavily_search, think_tool] # read_file removed
+research_tools = [tavily_search, think_tool]  # read_file removed
 
 # Create the agent
 # functionality-wise, create_react_agent returns a CompiledGraph
 research_agent_graph = create_react_agent(
-    model, 
-    research_tools, 
-    state_schema=DeepAgentState,
-    prompt=RESEARCHER_INSTRUCTIONS.format(date=get_today_str())
+    model, research_tools, state_schema=DeepAgentState, prompt=RESEARCHER_INSTRUCTIONS.format(date=get_today_str())
 )

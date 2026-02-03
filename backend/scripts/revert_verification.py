@@ -1,6 +1,7 @@
-from sqlmodel import Session, select, text
+from sqlmodel import Session, text
+
 from app.database import engine
-from app.models import User
+
 
 def revert_legacy_verification():
     with Session(engine) as session:
@@ -11,6 +12,7 @@ def revert_legacy_verification():
         session.exec(statement)
         session.commit()
         print("Successfully reverted verification status for legacy users.")
+
 
 if __name__ == "__main__":
     revert_legacy_verification()

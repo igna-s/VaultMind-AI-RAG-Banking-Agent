@@ -1,14 +1,16 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from app.config import settings
 import logging
 import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 # Get frontend URL from environment or use default (strip trailing slash to avoid double slashes)
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://salmon-smoke-0337ed810.6.azurestaticapps.net").rstrip('/')
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://salmon-smoke-0337ed810.6.azurestaticapps.net").rstrip("/")
+
 
 def send_reset_email(to_email: str, token: str):
     """
@@ -21,13 +23,13 @@ def send_reset_email(to_email: str, token: str):
     try:
         # Create message
         msg = MIMEMultipart()
-        msg['From'] = settings.SMTP_USER
-        msg['To'] = to_email
-        msg['Subject'] = "Recuperación de Contraseña - VaultMind AI"
+        msg["From"] = settings.SMTP_USER
+        msg["To"] = to_email
+        msg["Subject"] = "Recuperación de Contraseña - VaultMind AI"
 
         # Email body - use FRONTEND_URL for reset link
         reset_link = f"{FRONTEND_URL}/reset-password?token={token}"
-        
+
         body = f"""
         <html>
             <body>
@@ -40,7 +42,7 @@ def send_reset_email(to_email: str, token: str):
             </body>
         </html>
         """
-        msg.attach(MIMEText(body, 'html'))
+        msg.attach(MIMEText(body, "html"))
 
         # Send email
         if settings.SMTP_PORT == 465:
@@ -51,13 +53,14 @@ def send_reset_email(to_email: str, token: str):
         server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
         server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
         server.quit()
-        
+
         logger.info(f"Reset email sent to {to_email}")
         return True
 
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
         return False
+
 
 def send_verification_email(to_email: str, code: str):
     """
@@ -70,9 +73,9 @@ def send_verification_email(to_email: str, code: str):
     try:
         # Create message
         msg = MIMEMultipart()
-        msg['From'] = settings.SMTP_USER
-        msg['To'] = to_email
-        msg['Subject'] = "Verifica tu cuenta - VaultMind AI"
+        msg["From"] = settings.SMTP_USER
+        msg["To"] = to_email
+        msg["Subject"] = "Verifica tu cuenta - VaultMind AI"
 
         # Email body
         body = f"""
@@ -86,7 +89,7 @@ def send_verification_email(to_email: str, code: str):
             </body>
         </html>
         """
-        msg.attach(MIMEText(body, 'html'))
+        msg.attach(MIMEText(body, "html"))
 
         # Send email
         if settings.SMTP_PORT == 465:
@@ -97,7 +100,7 @@ def send_verification_email(to_email: str, code: str):
         server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
         server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
         server.quit()
-        
+
         logger.info(f"Verification email sent to {to_email}")
         return True
 
