@@ -14,14 +14,14 @@ load_dotenv(dotenv_path)
 # If running as 'python -m agent.main' from 'backend/', sys.path[0] is 'backend/'
 # standard imports 'from agent.xxx' work fine.
 
-from langchain_core.messages import HumanMessage # noqa: E402
-from langgraph.checkpoint.memory import MemorySaver # noqa: E402
-from langgraph.checkpoint.postgres import PostgresSaver # noqa: E402
-from psycopg_pool import ConnectionPool # noqa: E402
+from langchain_core.messages import HumanMessage  # noqa: E402
+from langgraph.checkpoint.memory import MemorySaver  # noqa: E402
+from langgraph.checkpoint.postgres import PostgresSaver  # noqa: E402
+from psycopg_pool import ConnectionPool  # noqa: E402
 
-from agent.agents.orchestra import MAIN_INSTRUCTIONS # noqa: E402
-from agent.db import init_db # noqa: E402
-from agent.utils import format_messages, show_prompt # noqa: E402
+from agent.agents.orchestra import MAIN_INSTRUCTIONS  # noqa: E402
+from agent.db import init_db  # noqa: E402
+from agent.utils import format_messages, show_prompt  # noqa: E402
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

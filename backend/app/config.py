@@ -57,7 +57,7 @@ class Settings(BaseSettings):
 
                 try:
                     return json.loads(v)
-                except:
+                except (json.JSONDecodeError, ValueError):
                     pass
             return [origin.strip() for origin in v.split(",")]
 

@@ -41,9 +41,16 @@ ignore = [
 ]
 
 # Allow unused imports in __init__.py files
+# E402 is ignored in files that intentionally import after logging/config setup
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "conftest.py" = ["F401"]
+"app/main.py" = ["E402"]
+"app/auth.py" = ["E402"]
+"app/database.py" = ["E402"]
+"app/routers/admin.py" = ["E402"]
+"agent/main.py" = ["E402"]
+"agent/tests/test_tools.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "agent"]

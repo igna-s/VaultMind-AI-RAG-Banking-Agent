@@ -12,11 +12,11 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(agent_dir, ".env"))
 
-from agent.agents.orchestra import delegate_research # noqa: E402
-from agent.tools.filesystem import ls, read_file, write_file # noqa: E402
-from agent.tools.general import think_tool # noqa: E402
-from agent.tools.search import tavily_search # noqa: E402
-from agent.tools.todos import read_todos, write_todos # noqa: E402
+from agent.agents.orchestra import delegate_research  # noqa: E402
+from agent.tools.filesystem import ls, read_file, write_file  # noqa: E402
+from agent.tools.general import think_tool  # noqa: E402
+from agent.tools.search import tavily_search  # noqa: E402
+from agent.tools.todos import read_todos, write_todos  # noqa: E402
 
 
 # Mock checking of tool calls
