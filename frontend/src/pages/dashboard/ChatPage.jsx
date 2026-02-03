@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Send, Bot, User as UserIcon, Loader2, Paperclip, Plus, MessageSquare, Trash2, Menu, X } from 'lucide-react';
@@ -82,18 +82,18 @@ export default function ChatPage() {
     const { user } = useAuth();
 
     // Fetch sessions on mount
-    const fetchSessions = async () => {
+    const fetchSessions = useCallback(async () => {
         try {
             const data = await api.get('/chat/sessions');
             setSessions(data);
         } catch (error) {
             console.error("Failed to fetch sessions:", error);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchSessions();
-    }, []);
+    }, [fetchSessions]);
 
     const location = useLocation();
 
@@ -109,7 +109,7 @@ export default function ChatPage() {
         if (location.state?.initialQuery) {
             window.history.replaceState({}, document.title);
         }
-    }, []);
+    }, [location.state]);
 
     // Load history when activeSession changes
     useEffect(() => {

@@ -15,19 +15,7 @@ export default function KnowledgeManagement() {
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-    useEffect(() => {
-        fetchKbs();
-    }, []);
-
-    useEffect(() => {
-        if (selectedKb) {
-            fetchDocuments(selectedKb.id);
-        } else {
-            setDocuments([]);
-        }
-    }, [selectedKb]);
-
-    const fetchKbs = async () => {
+    const fetchKbs = useCallback(async () => {
         try {
             const res = await fetch(`${API_URL}/admin/knowledge_bases`, { credentials: 'include' });
             if (res.ok) setKbs(await res.json());
@@ -36,16 +24,28 @@ export default function KnowledgeManagement() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [API_URL]);
 
-    const fetchDocuments = async (kbId) => {
+    const fetchDocuments = useCallback(async (kbId) => {
         try {
             const res = await fetch(`${API_URL}/admin/knowledge_bases/${kbId}/documents`, { credentials: 'include' });
             if (res.ok) setDocuments(await res.json());
         } catch (e) {
             console.error(e);
         }
-    };
+    }, [API_URL]);
+
+    useEffect(() => {
+        fetchKbs();
+    }, [fetchKbs]);
+
+    useEffect(() => {
+        if (selectedKb) {
+            fetchDocuments(selectedKb.id);
+        } else {
+            setDocuments([]);
+        }
+    }, [selectedKb, fetchDocuments]);
 
     const handleCreateKb = async (e) => {
         e.preventDefault();

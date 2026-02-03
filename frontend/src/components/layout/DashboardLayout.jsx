@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { LayoutDashboard, MessageSquare, Settings, LogOut, User, Menu, Database, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';

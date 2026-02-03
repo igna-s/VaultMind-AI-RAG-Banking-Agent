@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
@@ -16,7 +17,7 @@ export const RecentTransactions = () => {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    
+
                     // Map API data to UI format
                     const mapped = data.map(tx => ({
                         id: tx.id,
@@ -42,13 +43,13 @@ export const RecentTransactions = () => {
                 <h3 className="text-white/80 font-semibold text-lg">Recent Activity</h3>
                 <button className="text-indigo-300 text-sm hover:text-white transition-colors">View All</button>
             </div>
-            
+
             <div className="space-y-4">
                 {transactions.length === 0 && (
                     <div className="text-white/40 text-sm text-center py-4">No recent transactions</div>
                 )}
                 {transactions.map((tx, idx) => (
-                    <motion.div 
+                    <motion.div
                         key={tx.id}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
@@ -25,10 +26,10 @@ export const AccountStats = () => {
                         const main = accounts[0];
                         // Convert cents to dollars
                         const balance = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(main.balance / 100);
-                        
+
                         setStats(prev => [
                             { ...prev[0], value: balance },
-                            prev[1], 
+                            prev[1],
                             prev[2]
                         ]);
                     }
@@ -44,7 +45,7 @@ export const AccountStats = () => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {stats.map((stat, idx) => (
-                <motion.div 
+                <motion.div
                     key={idx}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}

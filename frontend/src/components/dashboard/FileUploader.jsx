@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
@@ -7,9 +7,8 @@ export const FileUploader = () => {
     const [uploading, setUploading] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
     const [error, setError] = useState('');
-    const { user } = useAuth();
 
-    const handleDrag = useCallback((e) => {
+    const handleDrag = (e) => {
         e.preventDefault();
         e.stopPropagation();
         setError('');
@@ -18,9 +17,9 @@ export const FileUploader = () => {
         } else if (e.type === 'dragleave') {
             setIsDragging(false);
         }
-    }, []);
+    };
 
-    const handleDrop = useCallback(async (e) => {
+    const handleDrop = async (e) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
@@ -30,7 +29,7 @@ export const FileUploader = () => {
         if (files && files[0]) {
             await uploadFile(files[0]);
         }
-    }, []);
+    };
 
     const handleFileInput = async (e) => {
         const files = [...e.target.files];
@@ -57,7 +56,7 @@ export const FileUploader = () => {
 
             if (!response.ok) throw new Error('Upload failed');
 
-            const data = await response.json();
+            await response.json();
             setUploadedFile({ name: file.name, type: file.type });
             setTimeout(() => setUploadedFile(null), 3000); // Clear success msg
         } catch (error) {

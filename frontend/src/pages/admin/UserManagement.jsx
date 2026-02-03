@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Search, Edit2, Check, X, Shield, FileText, AlertTriangle, Terminal, Clock, Activity } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -22,11 +22,7 @@ export default function UserManagement() {
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-    useEffect(() => {
-        fetchData();
-    }, [activeTab]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             if (activeTab === 'users') {
@@ -48,7 +44,11 @@ export default function UserManagement() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [activeTab, API_URL]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleSaveUser = async () => {
         if (!selectedUser) return;
@@ -118,8 +118,8 @@ export default function UserManagement() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                                : 'text-white/60 hover:text-white hover:bg-white/5'
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                            : 'text-white/60 hover:text-white hover:bg-white/5'
                             }`}
                     >
                         <tab.icon className="w-4 h-4" />
@@ -228,8 +228,8 @@ export default function UserManagement() {
                                         <td className="p-4 text-white/80 text-sm">{log.user_email}</td>
                                         <td className="p-4">
                                             <span className={`px-2 py-0.5 rounded text-xs font-bold border ${log.event === 'LOGIN' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                    log.event === 'TOKEN_USAGE' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                        'bg-white/5 text-white/60 border-white/10'
+                                                log.event === 'TOKEN_USAGE' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                    'bg-white/5 text-white/60 border-white/10'
                                                 }`}>
                                                 {log.event}
                                             </span>
