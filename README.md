@@ -1,12 +1,18 @@
 # 🧠 VaultMind AI - RAG Banking Agent
 
-![VaultMind AI](docs/screenshots/vaultmind_banner.png)
+
+
 
 This project is a **full-stack AI-powered RAG (Retrieval-Augmented Generation) application** designed for banking and financial knowledge management. It demonstrates the practical integration of **FastAPI** (Python) for the backend, **React + Vite** for the frontend, and **PostgreSQL with pgvector** for vector storage. The system includes a **LangGraph-based Deep Research Agent** capable of web search, database queries, and multi-step reasoning.
+
+![VaultMind Demo](docs/screenshots/demo.gif)
 
 > **🎓 Educational Purpose**: This project serves as a comprehensive guide for building production-ready AI agents with full-stack web development.
 
 > **🛡️ Security Note**: This project implements multiple security layers including bcrypt password hashing, JWT authentication, rate limiting, SQL injection protection, and CORS configuration. See the [Security Features](#-security-features) section for details.
+
+
+
 
 ---
 
@@ -440,3 +446,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Tavily** for web search capabilities
 - **LangChain** and **LangGraph** for agent orchestration
 - **Azure** for free-tier hosting services
+
