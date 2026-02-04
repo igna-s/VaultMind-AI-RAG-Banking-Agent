@@ -22,7 +22,35 @@ logger = logging.getLogger(__name__)
 
 from app.config import settings
 
+
+def censor_email(email: str) -> str:
+    """Censor email for demo/dev mode (e.g. j***@example.com)"""
+    if not email or "@" not in email:
+        return email
+    try:
+        user_part, domain = email.split("@")
+        if len(user_part) <= 1:
+            return f"{user_part}***@{domain}"
+        return f"{user_part[0]}***@{domain}"
+    except Exception:
+        return email
+
+
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/config")
+def get_admin_config(admin: User = Depends(get_admin_user)):
+    """Return admin configuration including app mode."""
+    return {"app_mode": settings.APP_MODE}
+
+
+def check_dev_mode_write_access():
+    """Raise 403 if in DEV mode and trying to write."""
+    if settings.APP_MODE == "DEV":
+        raise HTTPException(
+            status_code=403, detail="Action not allowed in Development Mode (Demo)"
+        )
 
 
 # --- Dependencies ---
@@ -40,7 +68,7 @@ def list_users(session: Session = Depends(get_session), admin: User = Depends(ge
     return [
         {
             "id": u.id,
-            "email": u.email,
+            "email": censor_email(u.email) if settings.APP_MODE == "DEV" else u.email,
             "role": u.role,
             "status": u.status,
             "knowledge_bases": [{"id": kb.id, "name": kb.name} for kb in u.knowledge_bases],
@@ -64,6 +92,7 @@ def update_user_role(
     session: Session = Depends(get_session),
     admin: User = Depends(get_admin_user),
 ):
+    check_dev_mode_write_access()
     if request.role not in ["user", "admin"]:
         raise HTTPException(status_code=400, detail="Role must be 'user' or 'admin'")
 
@@ -88,6 +117,7 @@ def update_user_kbs(
     session: Session = Depends(get_session),
     admin: User = Depends(get_admin_user),
 ):
+    check_dev_mode_write_access()
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -142,6 +172,7 @@ class CreateKBRequest(BaseModel):
 
 @router.post("/knowledge_bases")
 def create_kb(request: CreateKBRequest, session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    check_dev_mode_write_access()
     kb = KnowledgeBase(name=request.name, description=request.description, is_default=request.is_default)
     session.add(kb)
     session.commit()
@@ -151,6 +182,7 @@ def create_kb(request: CreateKBRequest, session: Session = Depends(get_session),
 
 @router.patch("/knowledge_bases/{kb_id}/default")
 def toggle_kb_default(kb_id: int, session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    check_dev_mode_write_access()
     kb = session.get(KnowledgeBase, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge Base not found")
@@ -169,6 +201,7 @@ async def upload_document_to_kb(
     session: Session = Depends(get_session),
     admin: User = Depends(get_admin_user),
 ):
+    check_dev_mode_write_access()
     file_bytes = await file.read()
     filename = file.filename or "document"
 
@@ -245,6 +278,7 @@ def list_kb_documents(kb_id: int, session: Session = Depends(get_session), admin
 
 @router.delete("/documents/{doc_id}")
 def delete_document(doc_id: int, session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
+    check_dev_mode_write_access()
     """Delete a document and all its associated chunks."""
     doc = session.get(Document, doc_id)
     if not doc:
@@ -279,6 +313,9 @@ def get_user_layouts(limit: int = 100, session: Session = Depends(get_session), 
     results = []
     for log in logs:
         user_email = log.user.email if log.user else "Unknown/Deleted"
+        if settings.APP_MODE == "DEV":
+            user_email = censor_email(user_email)
+
         results.append(
             {
                 "id": log.id,
@@ -299,6 +336,8 @@ def get_user_layouts(limit: int = 100, session: Session = Depends(get_session), 
         # manual join
         user = session.get(User, usage.user_id) if usage.user_id else None
         user_email = user.email if user else "System/Unknown"
+        if settings.APP_MODE == "DEV":
+            user_email = censor_email(user_email)
 
         results.append(
             {

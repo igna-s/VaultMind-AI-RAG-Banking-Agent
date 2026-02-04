@@ -11,6 +11,7 @@ export default function UserManagement() {
     const [kbs, setKbs] = useState([]);
     const [userLogs, setUserLogs] = useState([]);
     const [errorLogs, setErrorLogs] = useState([]);
+    const [appMode, setAppMode] = useState('PROD'); // Default safest, but we fetch it
 
     const [selectedUser, setSelectedUser] = useState(null);
     const [search, setSearch] = useState('');
@@ -22,15 +23,30 @@ export default function UserManagement() {
         setIsLoading(true);
         try {
             if (activeTab === 'users') {
-                const [usersRes, kbsRes] = await Promise.all([
+                const [usersRes, kbsRes, configRes] = await Promise.all([
                     fetch(`${API_URL}/admin/users`, { credentials: 'include' }),
-                    fetch(`${API_URL}/admin/knowledge_bases`, { credentials: 'include' })
+                    fetch(`${API_URL}/admin/knowledge_bases`, { credentials: 'include' }),
+                    fetch(`${API_URL}/admin/config`, { credentials: 'include' })
                 ]);
+
                 if (usersRes.ok) setUsers(await usersRes.json());
                 if (kbsRes.ok) setKbs(await kbsRes.json());
+                if (configRes && configRes.ok) {
+                    const config = await configRes.json();
+                    setAppMode(config.app_mode);
+                }
             } else if (activeTab === 'logs') {
-                const res = await fetch(`${API_URL}/admin/logs/users?limit=200`, { credentials: 'include' });
-                if (res.ok) setUserLogs(await res.json());
+                // Also fetch config when switching tabs to ensure we have valid mode
+                const [logsRes, configRes] = await Promise.all([
+                    fetch(`${API_URL}/admin/logs/users?limit=200`, { credentials: 'include' }),
+                    fetch(`${API_URL}/admin/config`, { credentials: 'include' })
+                ]);
+
+                if (logsRes.ok) setUserLogs(await logsRes.json());
+                if (configRes && configRes.ok) {
+                    const config = await configRes.json();
+                    setAppMode(config.app_mode);
+                }
             } else if (activeTab === 'errors') {
                 const res = await fetch(`${API_URL}/admin/logs/errors?limit=100`, { credentials: 'include' });
                 if (res.ok) setErrorLogs(await res.json());
@@ -48,6 +64,11 @@ export default function UserManagement() {
 
     const handleSaveUser = async () => {
         if (!selectedUser) return;
+
+        if (appMode === 'DEV') {
+            alert("No autorizado en esta demo");
+            return;
+        }
 
         try {
             // Update role if changed
