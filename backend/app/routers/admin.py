@@ -296,11 +296,16 @@ def get_user_layouts(limit: int = 100, session: Session = Depends(get_session), 
     """
     logs = session.exec(select(UserLog).order_by(UserLog.created_at.desc()).limit(limit)).all()
 
+    # Censor emails in PROD mode (demo mode)
+    is_demo = settings.APP_MODE == "PROD"
+
     # Enrich with user email
     # A bit inefficient 1+N but okay for admin panel with small limits
     results = []
     for log in logs:
         user_email = log.user.email if log.user else "Unknown/Deleted"
+        if is_demo and user_email not in ["Unknown/Deleted"]:
+            user_email = censor_email(user_email)
         results.append(
             {
                 "id": log.id,
@@ -321,6 +326,8 @@ def get_user_layouts(limit: int = 100, session: Session = Depends(get_session), 
         # manual join
         user = session.get(User, usage.user_id) if usage.user_id else None
         user_email = user.email if user else "System/Unknown"
+        if is_demo and user_email not in ["System/Unknown"]:
+            user_email = censor_email(user_email)
 
         results.append(
             {
