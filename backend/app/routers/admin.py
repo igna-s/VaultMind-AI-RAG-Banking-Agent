@@ -42,8 +42,8 @@ def censor_email(email: str) -> str:
 
 
 def check_demo_mode_mutation(admin: User = Depends(get_admin_user)):
-    """Block mutations in DEV mode (demo mode)."""
-    if settings.APP_MODE == "DEV":
+    """Block mutations in PROD mode (demo mode)."""
+    if settings.APP_MODE == "PROD":
         raise HTTPException(status_code=403, detail="Acción no autorizada en esta demo")
     return admin
 
@@ -53,8 +53,8 @@ def check_demo_mode_mutation(admin: User = Depends(get_admin_user)):
 def list_users(session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
     users = session.exec(select(User)).all()
     # Simple response model construction
-    # Censor emails in DEV mode (demo mode)
-    is_demo = settings.APP_MODE == "DEV"
+    # Censor emails in PROD mode (demo mode)
+    is_demo = settings.APP_MODE == "PROD"
     return [
         {
             "id": u.id,

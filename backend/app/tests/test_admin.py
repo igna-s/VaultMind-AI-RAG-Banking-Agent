@@ -2,8 +2,8 @@
 Tests for admin panel demo mode restrictions.
 
 These tests verify:
-1. Emails are censored in /admin/users when APP_MODE == "DEV"
-2. Mutation endpoints return 403 in DEV mode
+1. Emails are censored in /admin/users when APP_MODE == "PROD"
+2. Mutation endpoints return 403 in PROD mode
 """
 
 from app.routers.admin import censor_email
@@ -44,8 +44,8 @@ class TestDemoModeMutation:
 
         from app.config import settings
 
-        # In DEV mode, the dependency raises this exception
-        if settings.APP_MODE == "DEV":
+        # In PROD mode, the dependency raises this exception
+        if settings.APP_MODE == "PROD":
             error = HTTPException(status_code=403, detail="Acción no autorizada en esta demo")
             assert error.status_code == 403
             assert "demo" in error.detail.lower()
@@ -54,8 +54,8 @@ class TestDemoModeMutation:
 class TestEmailCensoringIntegration:
     """Integration tests for email censoring in list_users endpoint."""
 
-    def test_emails_censored_in_dev_mode(self):
-        """Emails should be censored when APP_MODE is DEV."""
+    def test_emails_censored_in_prod_mode(self):
+        """Emails should be censored when APP_MODE is PROD."""
         # This is a unit test for the censor function
         # Full integration would require mocking the database
         test_emails = [
