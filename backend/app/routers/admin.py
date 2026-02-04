@@ -39,10 +39,6 @@ def censor_email(email: str) -> str:
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-@router.get("/config")
-def get_admin_config(admin: User = Depends(get_admin_user)):
-    """Return admin configuration including app mode."""
-    return {"app_mode": settings.APP_MODE}
 
 
 def check_dev_mode_write_access():
@@ -58,6 +54,12 @@ def get_admin_user(user: User = Depends(get_current_user)):
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin privileges required")
     return user
+
+
+@router.get("/config")
+def get_admin_config(admin: User = Depends(get_admin_user)):
+    """Return admin configuration including app mode."""
+    return {"app_mode": settings.APP_MODE}
 
 
 # --- User Management ---
