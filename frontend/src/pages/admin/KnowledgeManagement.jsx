@@ -6,7 +6,6 @@ export default function KnowledgeManagement() {
     const [kbs, setKbs] = useState([]);
     const [selectedKb, setSelectedKb] = useState(null);
     const [documents, setDocuments] = useState([]);
-    const [appMode, setAppMode] = useState('PROD');
     const [isLoading, setIsLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -18,16 +17,8 @@ export default function KnowledgeManagement() {
 
     const fetchKbs = useCallback(async () => {
         try {
-            const [res, configRes] = await Promise.all([
-                fetch(`${API_URL}/admin/knowledge_bases`, { credentials: 'include' }),
-                fetch(`${API_URL}/admin/config`, { credentials: 'include' })
-            ]);
-
+            const res = await fetch(`${API_URL}/admin/knowledge_bases`, { credentials: 'include' });
             if (res.ok) setKbs(await res.json());
-            if (configRes && configRes.ok) {
-                const config = await configRes.json();
-                setAppMode(config.app_mode);
-            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -58,10 +49,6 @@ export default function KnowledgeManagement() {
 
     const handleCreateKb = async (e) => {
         e.preventDefault();
-        if (appMode === 'DEV') {
-            alert("No autorizado en esta demo");
-            return;
-        }
         try {
             const res = await fetch(`${API_URL}/admin/knowledge_bases`, {
                 method: 'POST',
@@ -74,6 +61,13 @@ export default function KnowledgeManagement() {
                     description: newKbDesc || null
                 })
             });
+
+            // Handle demo mode restriction
+            if (res.status === 403) {
+                const errorData = await res.json();
+                alert(errorData.detail || 'No autorizado en esta demo');
+                return;
+            }
 
             if (res.ok) {
                 fetchKbs();
@@ -92,13 +86,6 @@ export default function KnowledgeManagement() {
         const file = e.target.files[0];
         if (!file || !selectedKb) return;
 
-        if (appMode === 'DEV') {
-            alert("No autorizado en esta demo");
-            // Clear the input so user can try again if they really want to see the error again
-            e.target.value = null;
-            return;
-        }
-
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
@@ -110,6 +97,14 @@ export default function KnowledgeManagement() {
                 credentials: 'include',
                 body: formData
             });
+
+            // Handle demo mode restriction
+            if (res.status === 403) {
+                const errorData = await res.json();
+                alert(errorData.detail || 'No autorizado en esta demo');
+                return;
+            }
+
             if (res.ok) {
                 fetchDocuments(selectedKb.id);
                 // Refresh KB list to update counts if we add that later
@@ -123,10 +118,6 @@ export default function KnowledgeManagement() {
 
     const toggleDefault = async () => {
         if (!selectedKb) return;
-        if (appMode === 'DEV') {
-            alert("No autorizado en esta demo");
-            return;
-        }
         try {
             const res = await fetch(`${API_URL}/admin/knowledge_bases/${selectedKb.id}/default`, {
                 method: 'PATCH',
@@ -143,10 +134,6 @@ export default function KnowledgeManagement() {
     };
 
     const handleDeleteDocument = async (docId, docTitle) => {
-        if (appMode === 'DEV') {
-            alert("No autorizado en esta demo");
-            return;
-        }
         if (!confirm(`¿Estás seguro de que deseas eliminar "${docTitle}"?`)) return;
 
         try {
@@ -154,6 +141,14 @@ export default function KnowledgeManagement() {
                 method: 'DELETE',
                 credentials: 'include'
             });
+
+            // Handle demo mode restriction
+            if (res.status === 403) {
+                const errorData = await res.json();
+                alert(errorData.detail || 'No autorizado en esta demo');
+                return;
+            }
+
             if (res.ok) {
                 // Refresh both documents list and KB list (to update count)
                 fetchDocuments(selectedKb.id);
